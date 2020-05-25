@@ -1,0 +1,136 @@
+ccg_name,nhser_name,pop
+NHS Luton CCG,East of England,214109
+NHS Leicester City CCG,Midlands,355218
+NHS Brent CCG,London,330795
+NHS Hounslow CCG,London,270782
+NHS Milton Keynes CCG,East of England,275002
+NHS Isle of Wight CCG,South East,141538
+NHS Barking and Dagenham CCG,London,211998
+NHS Ealing CCG,London,341982
+NHS Sandwell and West Birmingham CCG,Midlands,504641
+NHS Redbridge CCG,London,303858
+NHS Newham CCG,London,352005
+NHS Harrow CCG,London,250149
+NHS South East London CCG,London,1811249
+NHS Wolverhampton CCG,Midlands,262008
+NHS Thurrock CCG,East of England,172525
+NHS Hillingdon CCG,London,304824
+NHS Waltham Forest CCG,London,276700
+NHS Basildon and Brentwood CCG,East of England,262412
+NHS Walsall CCG,Midlands,283378
+NHS Birmingham and Solihull CCG,Midlands,1179020
+NHS East Berkshire CCG,South East,434463
+NHS Herts Valleys CCG,East of England,595670
+NHS Southend CCG,East of England,182463
+NHS Havering CCG,London,257810
+NHS Derby and Derbyshire CCG,Midlands,1019900
+NHS West Essex CCG,East of England,306910
+NHS Warwickshire North CCG,Midlands,193752
+NHS Bradford District and Craven CCG,North East and Yorkshire,587936
+NHS North East Essex CCG,East of England,338326
+NHS Knowsley CCG,North West,149571
+NHS Telford and Wrekin CCG,Midlands,177799
+NHS Bedfordshire CCG,East of England,455229
+NHS Northamptonshire CCG,Midlands,730650
+NHS Doncaster CCG,North East and Yorkshire,310542
+NHS Tower Hamlets CCG,London,317705
+NHS Sunderland CCG,North East and Yorkshire,277417
+NHS East and North Hertfordshire CCG,East of England,569078
+NHS City and Hackney CCG,London,288371
+NHS Southampton CCG,South East,252796
+NHS Surrey Heartlands CCG,South East,1036742
+NHS Tees Valley CCG,North East and Yorkshire,674284
+NHS Dudley CCG,Midlands,320626
+NHS Nottingham and Nottinghamshire CCG,Midlands,1037356
+NHS East Leicestershire and Rutland CCG,Midlands,335800
+NHS Coventry and Rugby CCG,Midlands,473979
+NHS Barnsley CCG,North East and Yorkshire,245199
+NHS North Hampshire CCG,South East,223795
+NHS Portsmouth CCG,South East,215133
+NHS Berkshire West CCG,South East,489709
+NHS Kent and Medway CCG,South East,1846478
+NHS North East Hampshire and Farnham CCG,South East,211590
+NHS Blackburn with Darwen CCG,North West,148942
+NHS South Tyneside CCG,North East and Yorkshire,150265
+NHS Oldham CCG,North West,235623
+NHS Liverpool CCG,North West,494814
+NHS West Leicestershire CCG,Midlands,402165
+NHS Buckinghamshire CCG,South East,542512
+NHS Castle Point and Rochford CCG,East of England,177051
+NHS Salford CCG,North West,254408
+NHS North Kirklees CCG,North East and Yorkshire,192750
+NHS Manchester CCG,North West,547627
+NHS Rotherham CCG,North East and Yorkshire,264671
+NHS Halton CCG,North West,128432
+NHS South Sefton CCG,North West,159237
+NHS Gloucestershire CCG,South West,633558
+NHS Blackpool CCG,North West,139305
+"NHS Heywood, Middleton and Rochdale CCG",North West,220001
+"NHS Bristol, North Somerset and South Gloucestershire CCG",South West,959968
+NHS Wakefield CCG,North East and Yorkshire,345038
+NHS Newcastle Gateshead CCG,North East and Yorkshire,502704
+NHS Stoke on Trent CCG,Midlands,264149
+NHS North Tyneside CCG,North East and Yorkshire,205985
+NHS Fareham and Gosport CCG,South East,201622
+NHS Sheffield CCG,North East and Yorkshire,582506
+NHS East Staffordshire CCG,Midlands,128418
+NHS Tameside and Glossop CCG,North West,258613
+NHS Calderdale CCG,North East and Yorkshire,210082
+NHS Hull CCG,North East and Yorkshire,260645
+NHS Mid Essex CCG,East of England,393065
+NHS Bolton CCG,North West,285372
+NHS Leeds CCG,North East and Yorkshire,789194
+NHS South West London CCG,London,1494905
+NHS Ipswich and East Suffolk CCG,East of England,409248
+NHS Surrey Heath CCG,South East,96474
+NHS Bury CCG,North West,190108
+NHS West Suffolk CCG,East of England,230997
+NHS Cambridgeshire and Peterborough CCG,East of England,889112
+NHS West Sussex CCG,South East,858852
+NHS East Lancashire CCG,North West,380013
+NHS Warrington CCG,North West,209547
+NHS Oxfordshire CCG,South East,672414
+NHS Greater Huddersfield CCG,North East and Yorkshire,245977
+NHS Brighton and Hove CCG,South East,290395
+NHS North Central London CCG,London,1498001
+NHS South Eastern Hampshire CCG,South East,216379
+NHS Cannock Chase CCG,Midlands,136974
+NHS St Helens CCG,North West,180049
+NHS Greater Preston CCG,North West,202562
+NHS Stockport CCG,North West,291775
+NHS Herefordshire and Worcestershire CCG,Midlands,784164
+NHS Bassetlaw CCG,North East and Yorkshire,116839
+NHS Wigan Borough CCG,North West,326088
+NHS East Sussex CCG,South East,554590
+NHS Somerset CCG,South West,559399
+NHS West Hampshire CCG,South East,566879
+NHS South East Staffordshire and Seisdon Peninsula CCG,Midlands,226137
+NHS Hammersmith and Fulham CCG,London,185426
+NHS Lincolnshire CCG,Midlands,755833
+NHS County Durham CCG,North East and Yorkshire,526980
+NHS Wirral CCG,North West,323235
+NHS West London CCG,London,226099
+NHS South Warwickshire CCG,Midlands,270064
+NHS Shropshire CCG,Midlands,320274
+NHS Norfolk and Waveney CCG,East of England,1021991
+NHS Northumberland CCG,North East and Yorkshire,320274
+NHS Devon CCG,South West,1194166
+NHS Trafford CCG,North West,236370
+NHS West Lancashire CCG,North West,113949
+NHS Cheshire CCG,North West,721292
+NHS Morecambe Bay CCG,North West,330572
+NHS Chorley and South Ribble CCG,North West,176862
+"NHS Bath and North East Somerset, Swindon and Wiltshire CCG",South West,918428
+NHS Stafford and Surrounds CCG,Midlands,155803
+NHS North Cumbria CCG,North East and Yorkshire,318631
+NHS Southport and Formby CCG,North West,116159
+NHS North East Lincolnshire CCG,North East and Yorkshire,159821
+NHS North Yorkshire CCG,North East and Yorkshire,426821
+NHS North Staffordshire CCG,Midlands,219571
+NHS Vale of York CCG,North East and Yorkshire,362955
+NHS Fylde and Wyre CCG,North West,192421
+NHS North Lincolnshire CCG,North East and Yorkshire,172005
+NHS Central London (Westminster) CCG,London,185422
+NHS East Riding of Yorkshire CCG,North East and Yorkshire,317404
+NHS Dorset CCG,South West,772268
+NHS Kernow CCG,South West,568210
