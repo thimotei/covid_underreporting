@@ -104,6 +104,12 @@ getAdjustedCaseData <- function()
     dplyr::summarise(totalCases = sum(cases))
   
   
+  dateRange <- allDatRaw %>%
+    dplyr::group_by(countryCode) %>%
+    dplyr::summarise(minDate = min(date),
+                     maxDate = max(date)) 
+  
+  
   data_path <- "~/Dropbox/bayesian_underreporting_estimates/current_estimates/"
   files <- dir(path = data_path,
                pattern = "*.rds")
@@ -116,8 +122,9 @@ getAdjustedCaseData <- function()
     tidyr::unnest(cols = c(file_contents)) %>%
     dplyr::mutate(countryCode = stringr::str_remove(countryCode, "result_")) %>% 
     dplyr::mutate(countryCode = stringr::str_remove(countryCode, ".rds")) %>%
+    dplyr::left_join(dateRange) %>%
     dplyr::group_by(countryCode) %>%
-    dplyr::mutate(date = seq(Sys.Date() - 13 - dplyr::n()  + 1, Sys.Date() - 13, 1)) %>% 
+    dplyr::mutate(date = seq(unique(maxDate) - 13 - dplyr::n() + 1, unique(maxDate) - 13, 1)) %>%
     dplyr::select(date, everything()) %>%
     dplyr::left_join(countryCodesLookUp) %>%
     dplyr::select(date, country, countryCode, everything()) %>%
@@ -186,9 +193,134 @@ combineMapAndIncidenceData <- function(dataToPlot)
 }
 
 
-getCumulativeIncidenceEstimates <- function()
+getNationalCumulativeIncidenceEstimates <- function()
 {
   here::here() %>% setwd()
+  
+  allUnderReportingAndTestingData <- getUnderReportingAndTestingData()
+  allAdjustedCaseData <- getAdjustedCaseData()
+  
+  worldPopulationEstimatesRaw <- readr::read_csv("https://population.un.org/wpp/Download/Files/1_Indicators%20(Standard)/CSV_FILES/WPP2019_TotalPopulationBySex.csv")
+  
+  worldPopulationEstimatesClean <- worldPopulationEstimatesRaw %>%
+    dplyr::filter(Variant == "Medium" & Time == "2020") %>% 
+    dplyr::select(country = Location, population = PopTotal) %>%
+    dplyr::mutate(population = population*1000) %>%
+    dplyr::mutate(country = dplyr::case_when(country == "Bolivia (Plurinational State of)" ~ "Bolivia",
+                                             country != "Bolivia (Plurinational State of)" ~ country)) %>%
+    dplyr::mutate(country = dplyr::case_when(country == "Iran (Islamic Republic of)" ~ "Iran",
+                                             country != "Iran (Islamic Republic of)" ~ country)) %>%
+    dplyr::mutate(country = dplyr::case_when(country == "Republic of Moldova" ~ "Moldova",
+                                             country != "Republic of Moldova" ~ country)) %>%
+    dplyr::mutate(country = dplyr::case_when(country == "Russian Federation" ~ "Russia",
+                                             country != "Russian Federation" ~ country)) %>%
+    dplyr::mutate(country = dplyr::case_when(country == "Sint Maarten (Dutch part)" ~ "Sint Maarten",
+                                             country != "Sint Maarten (Dutch part)" ~ country)) %>%
+    dplyr::mutate(country = dplyr::case_when(country == "Republic of Korea" ~ "South Korea",
+                                             country != "Republic of Korea" ~ country)) %>%
+    dplyr::mutate(country = dplyr::case_when(country == "Venezuela (Bolivarian Republic of)" ~ "Venezuela",
+                                             country != "Venezuela (Bolivarian Republic of)" ~ country)) %>%
+    rbind(c("Kosovo", 1810366))
+  
+  
+  asymptomaticPropMid <- 0.5
+  asymptomaticPropLow <- 0.23
+  asymptomaticPropHigh <- 0.7
+  
+  
+  allIncidenceEstimates <- allAdjustedCaseData %>% 
+    dplyr::left_join(worldPopulationEstimatesClean) %>% 
+    dplyr::group_by(country) %>%
+    dplyr::mutate(population = as.numeric(population)) %>%
+    dplyr::mutate(cumulativeIncidenceMid  = cumsum(trueCasesMid)/(population*(1 - asymptomaticPropMid)),
+                  cumulativeIncidenceLow  = cumsum(trueCasesLow)/(population*(1 - asymptomaticPropLow)),
+                  cumulativeIncidenceHigh = cumsum(trueCasesHigh)/(population*(1 - asymptomaticPropHigh))) %>%
+    dplyr::mutate(cumulativeIncidenceMid = dplyr::case_when(cumulativeIncidenceMid >= 1 ~ 1,
+                                                             cumulativeIncidenceMid <= 0 ~ 0,
+                                                             cumulativeIncidenceMid > 0 & cumulativeIncidenceMid < 1 ~ cumulativeIncidenceMid)) %>%
+    dplyr::mutate(cumulativeIncidenceLow = dplyr::case_when(cumulativeIncidenceLow > 1 ~ 1,
+                                                             cumulativeIncidenceLow < 0 ~ 0,
+                                                             cumulativeIncidenceLow > 0 & cumulativeIncidenceLow < 1 ~ cumulativeIncidenceLow)) %>%
+    dplyr::mutate(cumulativeIncidenceHigh = dplyr::case_when(cumulativeIncidenceHigh > 1 ~ 1,
+                                                             cumulativeIncidenceHigh < 0 ~ 0,
+                                                             cumulativeIncidenceHigh > 0 & cumulativeIncidenceHigh < 1 ~ cumulativeIncidenceHigh)) %>%
+    dplyr::ungroup() %>%
+    tidyr::drop_na()
+  
+  return(allIncidenceEstimates)
+  
+}
+
+getRegionalCaseDeathTimeSeries <- function()
+{
+  
+  newYorkData <- NCoVUtils::get_us_regional_cases() %>%
+    dplyr::filter(state == "New York") %>%
+    dplyr::rename(iso_code = state,
+                  new_cases = cases,
+                  new_deaths = deaths) %>%
+    dplyr::select(-fips) %>%
+    dplyr::mutate(iso_code = "NYC")
+  
+  
+  wuhanData <- getWuhanCaseDeathTimeSeries() %>%
+    dplyr::select(date, country, new_cases, new_deaths) %>%
+    dplyr::rename(iso_code = country) %>%
+    dplyr::mutate(iso_code = "WUH") %>%
+    dplyr::mutate(new_deaths = dplyr::case_when(new_deaths < 0 ~ 0,
+                                                new_deaths >= 0 ~ new_deaths))
+  
+  
+  genevaData <- readr::read_csv("covid_19/COVID19_Fallzahlen_CH_total_v2.csv") %>%
+    dplyr::arrange(abbreviation_canton_and_fl, date) %>%
+    dplyr::group_by(abbreviation_canton_and_fl) %>%
+    padr::pad(by = "date")  %>%
+    dplyr::arrange(abbreviation_canton_and_fl, date) %>%
+    dplyr::mutate(date,
+                  country = abbreviation_canton_and_fl,
+                  new_cases = ncumul_conf - dplyr::lag(ncumul_conf), 
+                  new_deaths = ncumul_deceased - dplyr::lag(ncumul_deceased)) %>%
+    dplyr::select(date, country, new_cases, new_deaths) %>%
+    tidyr::drop_na() %>%
+    dplyr::filter(country == "GE") %>% 
+    dplyr::ungroup() %>%
+    dplyr::select(-abbreviation_canton_and_fl) %>%
+    dplyr::rename(iso_code = country) %>%
+    dplyr::mutate(iso_code = "GEN")
+  
+  regionalDataTogether <- rbind(newYorkData, genevaData, wuhanData) %>%
+    dplyr::mutate(country = iso_code) %>%
+    dplyr::select(date, iso_code, country, new_cases, new_deaths)
+  
+  return(regionalDataTogether)
+  
+}
+
+
+# read in HPC output data neatly
+
+regionalHPCBayesianData <- function()
+{
+  
+  data_path <- "~/Dropbox/bayesian_underreporting_estimates/regional_data/results/"
+  files <- dir(path = data_path,
+               pattern = "*.rds")
+  
+  data <- dplyr::tibble(countryCode = files) %>% 
+    dplyr::mutate(file_contents = purrr::map(countryCode, 
+                                             ~ readRDS(file.path(data_path, .)))
+                  
+    ) %>% 
+    tidyr::unnest(cols = c(file_contents)) %>%
+    dplyr::mutate(countryCode = stringr::str_remove(countryCode, "result_")) %>% 
+    dplyr::mutate(countryCode = stringr::str_remove(countryCode, ".rds")) 
+  
+  return(data)
+  
+}
+
+getCumulativeIncidenceEstimates <- function()
+{
   
   allUnderReportingAndTestingData <- getUnderReportingAndTestingData()
   allAdjustedCaseData <- getAdjustedCaseData()
@@ -244,3 +376,54 @@ getCumulativeIncidenceEstimates <- function()
   
 }
 
+getRegionalCumulativeIncidenceEstimates <- function()
+{
+  
+  asymptomaticPropMid <- 0.5
+  asymptomaticPropLow <- 0.23
+  asymptomaticPropHigh <- 0.7
+  
+  
+  populationData <- dplyr::tibble(countryCode = c("GEN", "NYC", "WUH"),
+                                  population  = c(499480, 19453561, 8896900))
+  
+  
+  regionalCaseDeathTS <- getRegionalCaseDeathTimeSeries() %>%
+    dplyr::rename(countryCode = iso_code)
+  
+  regionalEstimates <- regionalHPCBayesianData()
+  
+  dateRange <- regionalCaseDeathTS %>%
+    dplyr::group_by(countryCode) %>%
+    dplyr::summarise(minDate = min(date),
+                     maxDate = max(date)) %>%
+    dplyr::left_join(populationData)
+  
+  
+  regionalUnderreportingAndRawData %>%
+    dplyr::group_by(countryCode) %>%
+    dplyr::summarise(minDate = min(date),
+                     maxDate = max(date)) %>%
+    dplyr::left_join(populationData)
+  
+  
+  regionalUnderreportingAndRawData <- regionalEstimates %>%
+    dplyr::left_join(dateRange) %>%
+    dplyr::group_by(countryCode) %>%
+    dplyr::mutate(date = seq(unique(maxDate) - 13 - dplyr::n() + 1, unique(maxDate) - 13, 1)) %>%
+    dplyr::select(date, countryCode, estimate, lower, upper, population) %>%
+    dplyr::left_join(regionalCaseDeathTS) %>%
+    dplyr::select(-country) %>%
+    tidyr::drop_na() %>%
+    dplyr::group_by(countryCode) %>%
+    dplyr::mutate(trueCasesMid  = smooth::sma(new_cases/estimate)$fitted,
+                  trueCasesLow  = smooth::sma(new_cases/upper)$fitted,
+                  trueCasesHigh = smooth::sma(new_cases/lower)$fitted) %>%
+    dplyr::mutate(cumulativeIncidenceMid  = cumsum(trueCasesMid)/(population*(1 - asymptomaticPropMid)),
+                  cumulativeIncidenceLow  = cumsum(trueCasesLow)/(population*(1 - asymptomaticPropLow)),
+                  cumulativeIncidenceHigh = cumsum(trueCasesHigh)/(population*(1 - asymptomaticPropHigh)))
+  
+  
+  return(regionalUnderreportingAndRawData)
+  
+}
