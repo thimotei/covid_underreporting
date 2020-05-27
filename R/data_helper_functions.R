@@ -1,3 +1,22 @@
+getCountryCodes <- function()
+{
+  
+  httr::GET("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv", httr::authenticate(":", ":", type="ntlm"), httr::write_disk(tf <- tempfile(fileext = ".csv")))
+  allDatRaw <- readr::read_csv(tf) %>%
+    dplyr::rename(date = dateRep, 
+                  country = countriesAndTerritories,
+                  countryCode = countryterritoryCode) %>%
+    dplyr::mutate(date = lubridate::dmy(date))
+  
+  countryCodesLookUp <- allDatRaw %>%
+    dplyr::select(country, 
+                  countryCode) %>% 
+    unique()
+  
+  return(countryCodesLookUp)
+  
+}
+
 getUnderReportingAndTestingData <- function()
 {
   
@@ -180,7 +199,6 @@ getIncidenceUpToDateData <- function(data = allCumulativeIncidenceEstimates, dat
   
 }
 
-
 combineMapAndIncidenceData <- function(dataToPlot)
 {
   
@@ -191,7 +209,6 @@ combineMapAndIncidenceData <- function(dataToPlot)
     dplyr::select(country, lat, long, group, country, cumulativePrevalenceMid)
   
 }
-
 
 getNationalCumulativeIncidenceEstimates <- function()
 {
@@ -295,7 +312,6 @@ getRegionalCaseDeathTimeSeries <- function()
   return(regionalDataTogether)
   
 }
-
 
 # read in HPC output data neatly
 
@@ -427,3 +443,106 @@ getRegionalCumulativeIncidenceEstimates <- function()
   return(regionalUnderreportingAndRawData)
   
 }
+
+getRawUKRegionalDeathData <- function()
+{
+  
+  # PHE Dashboard deaths = England, Wales, Scotland, N Ireland; UK
+  dash_deaths <- readr::read_csv("https://coronavirus.data.gov.uk/downloads/csv/coronavirus-deaths_latest.csv")
+  
+  
+  # Hospital deaths ---------------------------------------------------------
+  
+  # NHS Hospital deaths = England regions
+  date <- paste0(format(Sys.Date() - 1, "%d"), "-", months(Sys.Date()), "-", format(Sys.Date(), "%Y"))
+  hosp_deaths_path <- paste0("https://www.england.nhs.uk/statistics/wp-content/uploads/sites/2/2020/", format(Sys.Date(), "%m"), "/COVID-19-total-announced-deaths-", date, ".xlsx")
+  
+  # Deaths in hospitals with covid test
+  hosp_deaths_tested <- openxlsx::read.xlsx(hosp_deaths_path, sheet = 3, startRow = 16, detectDates = TRUE, colNames = TRUE, skipEmptyRows = TRUE, skipEmptyCols = TRUE)
+  hosp_deaths_tested <- hosp_deaths_tested[,1:(ncol(hosp_deaths_tested) - 2)]
+  hosp_deaths_tested <- setNames(data.frame(t(hosp_deaths_tested[,-1])), hosp_deaths_tested[,1])
+  row.names(hosp_deaths_tested) <- NULL
+  hosp_deaths_tested$date <- seq.Date(from = as.Date("2020-02-29"), by = "day", length.out = nrow(hosp_deaths_tested))
+  
+  # Deaths in hospitals without test but with covid on death certificate
+  hosp_deaths_untested <- openxlsx::read.xlsx(hosp_deaths_path, sheet = 4, startRow = 16, detectDates = TRUE, colNames = TRUE, skipEmptyRows = TRUE, skipEmptyCols = TRUE)
+  hosp_deaths_untested <- hosp_deaths_untested[,1:(ncol(hosp_deaths_untested) - 2)]
+  hosp_deaths_untested <- setNames(data.frame(t(hosp_deaths_untested[,-1])), hosp_deaths_untested[,1])
+  row.names(hosp_deaths_untested) <- NULL
+  hosp_deaths_untested$date <- seq.Date(from = as.Date("2020-02-29"), by = "day", length.out = nrow(hosp_deaths_untested))
+  
+  # Deaths by trust (note dates stored in cols for now)
+  hosp_deaths_bytrust <- openxlsx::read.xlsx(hosp_deaths_path, sheet = 6, startRow = 16, detectDates = TRUE, colNames = TRUE, skipEmptyRows = TRUE, skipEmptyCols = TRUE)
+  hosp_deaths_bytrust <- hosp_deaths_bytrust[2:nrow(hosp_deaths_bytrust), 1:(ncol(hosp_deaths_bytrust) - 2)]
+  colnames(hosp_deaths_bytrust) <- c("region", "code", "trust_name", format(seq.Date(from = as.Date("2020-02-29"), by = "day", length.out = ncol(hosp_deaths_bytrust)-3), "%D"))
+  
+  return(hosp_deaths_bytrust)
+  
+}
+
+getRegionalUKCaseDeathData <- function()
+{
+  
+  # downloading and combining raw UK death data
+  hospDeathsByTrust <- getRawUKRegionalDeathData()
+  
+  
+  # cleaning data into simple time-series by region
+  ukRegionalDeaths <- hosp_deaths_bytrust %>% 
+    dplyr::tibble() %>%
+    tidyr::pivot_longer(cols = ends_with("/20")) %>%
+    dplyr::select(region, date = name, deaths = value) %>%
+    dplyr::mutate(date = paste0(date, "20"),
+                  region = dplyr::case_when(region == "London " ~ "London",
+                                            region != "London " ~ region)) %>%
+    dplyr::mutate(date = lubridate::mdy(date)) %>%
+    dplyr::mutate(region = dplyr::case_when(region == "East Of England" ~ "East of England",
+                                            region != "East Of England" ~ region)) %>%
+    dplyr::group_by(date, region) %>%
+    dplyr::summarise(deaths = sum(deaths)) %>%
+    dplyr::arrange(region, date) 
+  
+  # downloading UK case data and cleaning into simple time-series by region
+  ukRegionalCases <- NCoVUtils::get_uk_regional_cases() %>%
+    dplyr::filter(region != "Scotland" & region != "Wales" & region != "Northern Ireland") %>%
+    dplyr::select(-country) %>%
+    dplyr::mutate(region = ifelse(region %in% c('West Midlands', 'East Midlands'), 'Midlands', region),
+                  region = ifelse(region %in% c('North East', 'Yorkshire and The Humber'), 'North East And Yorkshire', region)) %>%
+    dplyr::group_by(date, region) %>%
+    dplyr::summarise(cases = sum(cases)) %>%
+    dplyr::arrange(date, region) 
+  
+  
+  ukRegionalData <- ukRegionalCases %>% 
+    dplyr::right_join(ukRegionalDeaths, by = c("date", "region")) %>%
+    dplyr::mutate(cases  = tidyr::replace_na(cases, 0),
+                  deaths = tidyr::replace_na(deaths, 0)) %>% 
+    dplyr::mutate(country_code = dplyr::case_when(region == "East of England" ~ "EOE",
+                                              region == "London" ~ "LON",
+                                              region == "Midlands" ~ "MID",
+                                              region == "North East And Yorkshire" ~ "NEY",
+                                              region == "North West" ~ "NOW",
+                                              region == "South East" ~ "SOE",
+                                              region == "South West" ~ "SOW")) %>%
+    dplyr::mutate(country  = dplyr::case_when(region == "East of England" ~ "EOE",
+                                              region == "London" ~ "LON",
+                                              region == "Midlands" ~ "MID",
+                                              region == "North East And Yorkshire" ~ "NEY",
+                                              region == "North West" ~ "NOW",
+                                              region == "South East" ~ "SOE",
+                                              region == "South West" ~ "SOW")) %>%
+    dplyr::select(date, iso_code, country, new_cases = cases, new_deaths = deaths)
+  
+
+    return(ukRegionalData)
+  
+}
+
+readr::write_csv(UKData, "covid_underreporting/data/regionalCaseDeathTimeSeriesUK.csv")
+
+
+
+
+
+
+
