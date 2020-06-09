@@ -11,7 +11,7 @@ allDataTogether <- getUnderReportingAndTestingData()
 # sourcing the functions to make the plots
 source("covid_underreporting/R/plotting_functions.R")
 
-#----------- m
+#----------- 
 
 png("covid_underreporting/figures/figure_1_all_countries_4.png", width = 1000, height = 1000, res = 100) 
 #par(mar = c(3, 3, 3, 3))

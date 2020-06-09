@@ -25,7 +25,7 @@ mapPlottingFunction <- function(dataInput, europe = TRUE)
   
   plotOutput <- dataInput %>%
     ggplot2::ggplot(ggplot2::aes(x = long, y = lat, group = group)) +
-    ggplot2::geom_polygon(ggplot2::aes(fill = cumulativePrevalenceMid*100)) + 
+    ggplot2::geom_polygon(ggplot2::aes(fill = cumulative_incidence_mid*100)) + 
     ggplot2::geom_path(ggplot2::aes(x = long, y = lat, group = group), size = 0.3) + 
     theme_map(world = TRUE) +
     viridis::scale_fill_viridis(option = "magma", 

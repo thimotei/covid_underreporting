@@ -10,7 +10,7 @@ source("covid_underreporting/R/plotting_functions.R")
 
 # get all test data, case data and underreporting estimates in single tibble=
 
-allUnderReportingAndTestingData <- getUnderReportingAndTestingData()
+allUnderReportingAndTestingData <- getUnderReportingCaseDeathPopulationAndTestingData()
 allAdjustedCaseData <- getAdjustedCaseData()
 
 
@@ -19,26 +19,27 @@ allAdjustedCaseData <- getAdjustedCaseData()
 # calling the plotting function to make figure 1 style plots for every country in one large .pdf
 
 allCountries <- allUnderReportingAndTestingData$country %>% unique()
-countriesOfInterest <- c("Canada",  "Bangladesh", "Switzerland", 
-                         "Belgium", "Italy",  "United Kingdom")
 
-potentialCountriesOfInterest <- c("Austria", "Belgium", "Canada",
-                                  "Denmark", "Hungary", "Indonesia",
-                                  "Italy", "South Korea", "Turkey")
+
+countriesOfInterest <- c("Switzerland", "Austria", "Korea (the Republic of)",
+                         "Belgium", "Italy", "Sweden")
 
 
 #pdf("covid_underreporting/figures/figure_1_all_countries.pdf") 
 
-png("covid_underreporting/figures/figure_1_countries_of_interest.png", width = 1024, height = 768)
+#png("covid_underreporting/figures/figure_1_countries_of_interest.png", width = 1024, height = 768)
+plotData <- allUnderReportingAndTestingData %>%
+  dplyr::filter(country %in% countriesOfInterest) %>%
+  dplyr::group_by(country)
 fontsize1 <- 1
 par(mar = c(3, 3, 3, 3))
 par(oma = c(2, 2, 2, 2))
-par(mfrow = c(3, 3))
-for(countryArg in potentialCountriesOfInterest)
+par(mfrow = c(2, 3))
+for(countryArg in countriesOfInterest)
 {
   tryCatch(
     {
-      figure1Fun(allUnderReportingAndTestingData, countryArg, 0, 0)
+      figure1Fun(plotData, countryArg, 0, 0)
     },
   error=function(e){})
   #allPlots[[countryArg]] = p
@@ -100,6 +101,10 @@ observedEstimatesRegionalTmp <- dplyr::tibble(country = c("Switzerland", "United
                                            observedEstimateMid  = c(0.097, 0.123),
                                            observedEstimateLow  = c(0.0727, 0.118),
                                            observedEstimateHigh = c(0.122, 0.128))
+
+regionalHPCBayesianData
+
+observedEstimatesReionalUK <- dplyr::tibble(region = c())
 
 
 plotPrevalenceNational <- figure2Fun(allNationalCumulativeIncidenceEstimates, observedEstimatesNational)
