@@ -19,107 +19,14 @@ getCountryCodes <- function()
   
 }
 
-#--- pulls our national under-reporting estimates from the shared Dropbox 
-#--- pulls testing data from the Our Wold In Data website
-#--- munges data together
-# getUnderReportingAndTestingData <- function()
-# {
-#   
-#   #---------- reading in the ECDC data ----------#
-#   
-#   httr::GET("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv", httr::authenticate(":", ":", type="ntlm"), httr::write_disk(tf <- tempfile(fileext = ".csv")))
-#   allDatRaw <- readr::read_csv(tf) %>%
-#     dplyr::rename(date = dateRep, 
-#                   country = countriesAndTerritories,
-#                   countryCode = countryterritoryCode) %>%
-#     dplyr::mutate(date = lubridate::dmy(date))
-#   
-#   
-#   countryCodesLookUp <- allDatRaw %>%
-#     dplyr::select(country,
-#                   countryCode) %>%
-#     unique()
-#   
-#   # DEPRACATED
-#   # dateRange <- allDatRaw %>%
-#   #   dplyr::group_by(countryCode) %>%
-#   #   dplyr::summarise(minDate = min(date),
-#   #                    maxDate = max(date))
-#   
-#   #---------- reading in the under-reporting estimates from the shared dropbox ----------#
-#   
-#   data_path <- "~/Dropbox/bayesian_underreporting_estimates/current_estimates_extracted/"
-#   files <- dir(path = data_path,
-#                pattern = "*.rds")
-#   
-#   data <- dplyr::tibble(countryCode = files) %>% 
-#     dplyr::mutate(file_contents = purrr::map(countryCode, 
-#                                              ~ readRDS(file.path(data_path, .)))
-#                   
-#     ) %>% 
-#     tidyr::unnest(cols = c(file_contents)) %>%
-#     dplyr::mutate(countryCode = stringr::str_remove(countryCode, "result_")) %>% 
-#     dplyr::mutate(countryCode = stringr::str_remove(countryCode, ".rds")) %>%
-#     #dplyr::left_join(dateRange) %>%
-#     dplyr::group_by(countryCode) %>%
-#     #dplyr::mutate(date = seq(unique(maxDate) - 13 - dplyr::n() + 1, unique(maxDate) - 13, 1)) %>% # DEPRACATED
-#     dplyr::select(date, everything()) %>%
-#     dplyr::left_join(countryCodesLookUp) %>%
-#     dplyr::select(date, country, countryCode, everything()) %>%
-#     dplyr::group_by(countryCode) %>%
-#     dplyr::ungroup()
-#   
-#   #------ combining the case & death data from ECDC with our under-reporting estimates
-#   #------ into a single tibble 
-#   
-#   dataCases <- data %>% 
-#     dplyr::left_join(allDatRaw, by = c("date", "country", "countryCode"), copy = FALSE) %>%
-#     dplyr::select(date, country, countryCode, cases, deaths) %>%
-#     tidyr::drop_na()
-#   
-#   dataCasesAndEstimates <- dataCases %>%
-#     dplyr::right_join(data, by = c("country", "date", "countryCode"), copy = FALSE) %>%
-#     tidyr::drop_na() %>% 
-#     dplyr::mutate(country = stringr::str_replace_all(country, "_", " "))
-#   
-#   #---------- reading in the OWID data and munging it together with the other data frame ----------#
-#   owidData <- readr::read_csv("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/testing/covid-testing-all-observations.csv")
-#   
-#   
-#   owidData <- readr::read_csv("https://covid.ourworldindata.org/data/owid-covid-data.csv") %>%
-#     dplyr::select(date, 
-#                   countryCode = iso_code,
-#                   country = location,
-#                   newTests = new_tests,
-#                   newCases = new_cases) %>% 
-#     tidyr::drop_na() %>%
-#     dplyr::mutate(country = dplyr::case_when(country == "United States" ~ "United States of America",
-#                                              country != "United States" ~ country))
-#   
-#   allDataTogether <- owidData %>%
-#     dplyr::right_join(dataCasesAndEstimates, by = c("date", "country")) %>%
-#     tidyr::drop_na() %>%
-#     dplyr::select(date, country, cases, deaths, newTests, estimate, lower, upper) %>%
-#     dplyr::arrange(country, date) %>%
-#     unique() %>% 
-#     dplyr::mutate(testsPerCase = newTests/cases) %>% 
-#     dplyr::group_by(country) %>%
-#     dplyr::select(date, upper, lower, estimate, testsPerCase) %>%
-#     dplyr::na_if(Inf) %>%
-#     dplyr::ungroup() %>%
-#     dplyr::mutate(upper = upper*100, lower = lower*100, estimate = estimate*100,
-#                   testsPerCaseMA = imputeTS::na_ma(testsPerCase, k = 4, weighting = "linear")) %>%
-#     dplyr::mutate(testsPerCaseMA = forecast::ma(testsPerCaseMA, order = 4, centre = TRUE)) %>%
-#     dplyr::filter(country != "Argentina")
-#   
-# }
-
-
 # up to date version of the function
 getUnderReportingCaseDeathPopulationAndTestingData <- function()
 {
   
-  owidData <- readr::read_csv("https://covid.ourworldindata.org/data/owid-covid-data.csv")
+  adHocTestData <- getAdHocTestingData()
+  
+  owidData <- readr::read_csv("https://covid.ourworldindata.org/data/owid-covid-data.csv") %>%
+    dplyr::left_join(adHocTestData, by = c("location", "iso_code", "date")) 
   
   underReportingPath <- "~/Dropbox/bayesian_underreporting_estimates/current_estimates_extracted/"
   files <- dir(path = underReportingPath,
@@ -142,96 +49,17 @@ getUnderReportingCaseDeathPopulationAndTestingData <- function()
   underReportingAndTestingData <- owidData %>% 
     dplyr::left_join(underReportingRawData) %>%
     dplyr::mutate(country = countrycode::countrycode(iso_code, "iso3c", destination = 'iso.name.en')) %>%
-    dplyr::select(date, iso_code, country, new_cases, new_deaths, total_cases, total_deaths, new_tests_smoothed_per_thousand, population, estimate, lower, upper) %>%
-    tidyr::drop_na()
+    dplyr::select(date, iso_code, country, new_cases, new_deaths, total_cases, total_deaths, new_tests_smoothed_per_thousand, population, estimate, lower, upper, testing_effort_smoothed) %>%
+    dplyr::mutate(new_tests_smoothed_per_thousand = dplyr::case_when(country == "United Kingdom" | country == "United States of America (the)" ~ testing_effort_smoothed,
+                                                                     country != "United Kingdom" | country != "United States of America (the)" ~ new_tests_smoothed_per_thousand)) %>%
+    dplyr::select(-testing_effort_smoothed)
+  
+  return(underReportingAndTestingData)
   
 }
 
-
-#--- pulls the confirmed case and death time-series data from ECDC then
-#--- adjusts the curves based on our under-reporting estimates and
-#--- the best available estimates for the proportion of asymptomatic infections
-# getAdjustedCaseData <- function()
-# {
-#   
-#   httr::GET("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv", httr::authenticate(":", ":", type="ntlm"), httr::write_disk(tf <- tempfile(fileext = ".csv")))
-#   allDatRaw <- readr::read_csv(tf) %>%
-#     dplyr::rename(date = dateRep, 
-#                   country = countriesAndTerritories,
-#                   countryCode = countryterritoryCode) %>%
-#     dplyr::mutate(date = lubridate::dmy(date))
-#   
-#   countryCodesLookUp <- allDatRaw %>%
-#     dplyr::select(country, 
-#                   countryCode) %>% 
-#     unique()
-#   
-#   deathSummaryData <- allDatRaw %>%
-#     dplyr::group_by(country) %>%
-#     dplyr::summarise(totalDeaths = sum(deaths)) %>% 
-#     dplyr::mutate(country_order = rank(totalDeaths)) %>%
-#     dplyr::arrange(desc(country_order))
-#   
-#   caseSummaryData <- allDatRaw %>%
-#     dplyr::group_by(country) %>%
-#     dplyr::summarise(totalCases = sum(cases))
-#   
-#   # DEPRACATED
-#   # dateRange <- allDatRaw %>%
-#   #   dplyr::group_by(countryCode) %>%
-#   #   dplyr::summarise(minDate = min(date),
-#   #                    maxDate = max(date)) 
-#   
-#   
-#   data_path <- "~/Dropbox/bayesian_underreporting_estimates/current_estimates_extracted/"
-#   files <- dir(path = data_path,
-#                pattern = "*.rds")
-#   
-#   dataTmp <- dplyr::tibble(countryCode = files) %>% 
-#     dplyr::mutate(file_contents = purrr::map(countryCode, 
-#                                              ~ readRDS(file.path(data_path, .)))
-#                   
-#     ) %>% 
-#     tidyr::unnest(cols = c(file_contents)) %>%
-#     dplyr::mutate(countryCode = stringr::str_remove(countryCode, "result_")) %>% 
-#     dplyr::mutate(countryCode = stringr::str_remove(countryCode, ".rds")) %>%
-#     # dplyr::left_join(dateRange) %>% DEPRACATED
-#     dplyr::group_by(countryCode) %>%
-#     # dplyr::mutate(date = seq(unique(maxDate) - 13 - dplyr::n() + 1, unique(maxDate) - 13, 1)) %>% # DEPRACATED
-#     dplyr::select(date, everything()) %>%
-#     dplyr::left_join(countryCodesLookUp) %>%
-#     dplyr::select(date, country, countryCode, everything()) %>%
-#     dplyr::group_by(countryCode) %>%
-#     dplyr::ungroup()
-#   
-#   underReportingData <- dataTmp %>% 
-#     dplyr::left_join(deathSummaryData, by = c('country' = 'country')) %>% 
-#     dplyr::left_join(caseSummaryData, by = c('country' = 'country')) %>% 
-#     dplyr::arrange(desc(country_order), date) 
-#   
-#   
-#   dataTrueCases <- allDatRaw %>%
-#     dplyr::mutate(date = as.Date(date)) %>%
-#     dplyr::left_join(underReportingData) %>%
-#     dplyr::select(date, country, cases, deaths, estimate, lower, upper) %>%
-#     dplyr::group_by(country) %>%
-#     dplyr::arrange(date, .by_group = TRUE) %>%
-#     tidyr::drop_na() %>%
-#     dplyr::mutate(trueCasesMid  = smooth::sma(cases/estimate)$fitted,
-#                   trueCasesLow  = smooth::sma(cases/upper)$fitted,
-#                   trueCasesHigh = smooth::sma(cases/lower)$fitted) %>%
-#     dplyr::ungroup(country) %>%
-#     dplyr::mutate(country = stringr::str_replace_all(country, "_", " ")) %>%
-#     dplyr::filter(!(country == "China" & date > "2020-03-15")) %>%
-#     dplyr::filter(dplyr::n() > 20) 
-#   
-#   return(dataTrueCases)
-#   
-# }
-
-
 # new version of the function, much more streamlined
-getAdjustedCaseData <- function()
+getAdjustedCaseDataNational <- function()
 {
   
   asymptomatic_mid <- 0.5
@@ -283,6 +111,7 @@ getAdjustedCaseData <- function()
     dplyr::mutate(cumulative_incidence_mid  = cumsum(new_cases_adjusted_mid)/(population_2018*(1 - asymptomatic_mid)),
                   cumulative_incidence_low  = cumsum(new_cases_adjusted_low)/(population_2018*(1 - asymptomatic_low)),
                   cumulative_incidence_high = cumsum(new_cases_adjusted_high)/(population_2018*(1 - asymptomatic_high))) %>%
+    dplyr::mutate(date_infection  = date - 10) %>%
     dplyr::mutate(cumulative_incidence_mid = dplyr::case_when(cumulative_incidence_mid >= 1 ~ 1,
                                                               cumulative_incidence_mid <= 0 ~ 0,
                                                               cumulative_incidence_mid > 0 & cumulative_incidence_mid < 1 ~ cumulative_incidence_mid)) %>%
@@ -304,6 +133,58 @@ getAdjustedCaseData <- function()
   
 }
 
+getAdjustedCaseDataRegional <- function()
+{
+  
+  regional_estimates <- regionalHPCBayesianData("~/Dropbox/bayesian_underreporting_estimates/regional_data/results_for_paper/") %>%
+    dplyr::rename(iso_code = country_code)
+  regional_case_death_data <- getRegionalCaseDeathTimeSeries() %>%
+    dplyr::rename(iso_code = country_code)
+  
+  populations <- readr::read_csv("covid_underreporting/data/regional populations.csv") %>%
+    dplyr::rename(iso_code = country_code)
+  
+  asymptomatic_mid <- 0.5
+  asymptomatic_low <- 0.1
+  asymptomatic_high <- 0.7
+  
+  
+  underReportingAndCaseData <- regional_case_death_data %>% 
+    dplyr::group_by(country) %>%
+    dplyr::left_join(regional_estimates) %>%
+    dplyr::group_by(country) %>%
+    dplyr::left_join(populations) %>%
+    dplyr::arrange(country, date) %>%
+    tidyr::drop_na() %>%
+    dplyr::select(date, iso_code, country, new_cases, new_deaths, population, estimate, lower, upper)
+  
+  dataOut <- underReportingAndCaseData %>%
+    dplyr::group_by(country) %>%
+    dplyr::mutate(new_cases_smoothed             = zoo::rollmean(new_cases, k = 7, fill = NA),
+                  new_cases_adjusted_mid         = new_cases/estimate,
+                  new_cases_adjusted_low         = new_cases/upper,
+                  new_cases_adjusted_high        = new_cases/lower,
+                  new_cases_adjusted_smooth_mid  = zoo::rollmean(new_cases_adjusted_mid, k = 7, fill = NA),
+                  new_cases_adjusted_smooth_low  = zoo::rollmean(new_cases_adjusted_low, k = 7, fill = NA),
+                  new_cases_adjusted_smooth_high = zoo::rollmean(new_cases_adjusted_high, k = 7, fill = NA)) %>%
+    dplyr::mutate(cumulative_incidence_mid  = cumsum(new_cases_adjusted_mid)/(population*(1 - asymptomatic_mid)),
+                  cumulative_incidence_low  = cumsum(new_cases_adjusted_low)/(population*(1 - asymptomatic_low)),
+                  cumulative_incidence_high = cumsum(new_cases_adjusted_high)/(population*(1 - asymptomatic_high))) %>%
+    dplyr::mutate(date_infection  = date - 10) %>%
+    dplyr::mutate(cumulative_incidence_mid = dplyr::case_when(cumulative_incidence_mid >= 1 ~ 1,
+                                                              cumulative_incidence_mid <= 0 ~ 0,
+                                                              cumulative_incidence_mid > 0 & cumulative_incidence_mid < 1 ~ cumulative_incidence_mid)) %>%
+    dplyr::mutate(cumulative_incidence_low = dplyr::case_when(cumulative_incidence_low > 1 ~ 1,
+                                                              cumulative_incidence_low < 0 ~ 0,
+                                                              cumulative_incidence_low > 0 & cumulative_incidence_low < 1 ~ cumulative_incidence_low)) %>%
+    dplyr::mutate(cumulative_incidence_high = dplyr::case_when(cumulative_incidence_high > 1 ~ 1,
+                                                               cumulative_incidence_high < 0 ~ 0,
+                                                               cumulative_incidence_high > 0 & cumulative_incidence_high < 1 ~ cumulative_incidence_high)) %>%
+    dplyr::ungroup() 
+  
+  return(dataOut)
+}
+
 #--- simple function to combine the map data (i.e. coordinates of countries) and our estimates
 combineMapAndIncidenceData <- function(dataToPlot)
 {
@@ -316,65 +197,128 @@ combineMapAndIncidenceData <- function(dataToPlot)
   
 }
 
-#--- get estimates of cumulative incidence over time for every country we have estimates for
-getNationalCumulativeIncidenceEstimates <- function()
+
+getAdjustedRegionalCaseAndSerologyData <- function()
 {
-  here::here() %>% setwd()
   
-  allUnderReportingAndTestingData <- getUnderReportingAndTestingData()
-  allAdjustedCaseData <- getAdjustedCaseData()
+  allAdjustedCaseData <- getAdjustedCaseDataRegional()  
   
-  worldPopulationEstimatesRaw <- readr::read_csv("https://population.un.org/wpp/Download/Files/1_Indicators%20(Standard)/CSV_FILES/WPP2019_TotalPopulationBySex.csv")
+  serology_study_results <- readr::read_csv("covid_underreporting/data/regional serology estimates.csv") %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(percentage_positive_mid = percentage_positive_mid/100,
+                  lower_ci = signif(binom_min(positive_samples, sample_size), 2)/100,
+                  upper_ci = signif(binom_max(positive_samples, sample_size), 2)/100)
   
-  worldPopulationEstimatesClean <- worldPopulationEstimatesRaw %>%
-    dplyr::filter(Variant == "Medium" & Time == "2020") %>% 
-    dplyr::select(country = Location, population = PopTotal) %>%
-    dplyr::mutate(population = population*1000) %>%
-    dplyr::mutate(country = dplyr::case_when(country == "Bolivia (Plurinational State of)" ~ "Bolivia",
-                                             country != "Bolivia (Plurinational State of)" ~ country)) %>%
-    dplyr::mutate(country = dplyr::case_when(country == "Iran (Islamic Republic of)" ~ "Iran",
-                                             country != "Iran (Islamic Republic of)" ~ country)) %>%
-    dplyr::mutate(country = dplyr::case_when(country == "Republic of Moldova" ~ "Moldova",
-                                             country != "Republic of Moldova" ~ country)) %>%
-    dplyr::mutate(country = dplyr::case_when(country == "Russian Federation" ~ "Russia",
-                                             country != "Russian Federation" ~ country)) %>%
-    dplyr::mutate(country = dplyr::case_when(country == "Sint Maarten (Dutch part)" ~ "Sint Maarten",
-                                             country != "Sint Maarten (Dutch part)" ~ country)) %>%
-    dplyr::mutate(country = dplyr::case_when(country == "Republic of Korea" ~ "South Korea",
-                                             country != "Republic of Korea" ~ country)) %>%
-    dplyr::mutate(country = dplyr::case_when(country == "Venezuela (Bolivarian Republic of)" ~ "Venezuela",
-                                             country != "Venezuela (Bolivarian Republic of)" ~ country)) %>%
-    rbind(c("Kosovo", 1810366))
+  regional_lookup_table <- readr::read_csv("covid_underreporting/data/regional_codes_look_up.csv")
   
+  adjusted_cases_and_serology <- allAdjustedCaseData %>%
+    dplyr::left_join(serology_study_results, by = c("iso_code")) %>%
+    dplyr::left_join(regional_lookup_table)
   
-  asymptomaticPropMid <- 0.5
-  asymptomaticPropLow <- 0.23
-  asymptomaticPropHigh <- 0.7
-  
-  
-  allIncidenceEstimates <- allAdjustedCaseData %>% 
-    dplyr::left_join(worldPopulationEstimatesClean) %>% 
-    dplyr::group_by(country) %>%
-    dplyr::mutate(population = as.numeric(population)) %>%
-    dplyr::mutate(cumulativeIncidenceMid  = cumsum(trueCasesMid)/(population*(1 - asymptomaticPropMid)),
-                  cumulativeIncidenceLow  = cumsum(trueCasesLow)/(population*(1 - asymptomaticPropLow)),
-                  cumulativeIncidenceHigh = cumsum(trueCasesHigh)/(population*(1 - asymptomaticPropHigh))) %>%
-    dplyr::mutate(cumulativeIncidenceMid = dplyr::case_when(cumulativeIncidenceMid >= 1 ~ 1,
-                                                             cumulativeIncidenceMid <= 0 ~ 0,
-                                                             cumulativeIncidenceMid > 0 & cumulativeIncidenceMid < 1 ~ cumulativeIncidenceMid)) %>%
-    dplyr::mutate(cumulativeIncidenceLow = dplyr::case_when(cumulativeIncidenceLow > 1 ~ 1,
-                                                             cumulativeIncidenceLow < 0 ~ 0,
-                                                             cumulativeIncidenceLow > 0 & cumulativeIncidenceLow < 1 ~ cumulativeIncidenceLow)) %>%
-    dplyr::mutate(cumulativeIncidenceHigh = dplyr::case_when(cumulativeIncidenceHigh > 1 ~ 1,
-                                                             cumulativeIncidenceHigh < 0 ~ 0,
-                                                             cumulativeIncidenceHigh > 0 & cumulativeIncidenceHigh < 1 ~ cumulativeIncidenceHigh)) %>%
-    dplyr::ungroup() %>%
-    tidyr::drop_na()
-  
-  return(allIncidenceEstimates)
+  return(adjusted_cases_and_serology)
   
 }
 
+#--- regional data functions
+
+#--- merge UK death data from different sources - from Kath Sherratt
+getRawUKRegionalDeathData <- function()
+{
+  
+  # Sourcing public deaths in hospitals 
+  # Available by English region + for England
+  
+  # Hospital deaths ---------------------------------------------------------
+  
+  # NHS Hospital deaths = England regions
+  date <- paste0(format(Sys.Date()-1, "%d"), "-", months(Sys.Date()), "-", format(Sys.Date(), "%Y"))
+  date <- sub("^0+", "", date)
+  hosp_deaths_path <- paste0("https://www.england.nhs.uk/statistics/wp-content/uploads/sites/2/2020/", format(Sys.Date(), "%m"), "/COVID-19-total-announced-deaths-", date, ".xlsx")
+  
+  # Deaths in hospitals with covid test
+  hosp_deaths_tested <- openxlsx::read.xlsx(hosp_deaths_path, sheet = 3, startRow = 16, detectDates = TRUE, colNames = TRUE, skipEmptyRows = TRUE, skipEmptyCols = TRUE)
+  hosp_deaths_tested <- hosp_deaths_tested[,1:(ncol(hosp_deaths_tested) - 2)]
+  hosp_deaths_tested <- setNames(data.frame(t(hosp_deaths_tested[,-1])), hosp_deaths_tested[,1])
+  row.names(hosp_deaths_tested) <- NULL
+  hosp_deaths_tested$date <- seq.Date(from = as.Date("2020-02-29"), by = "day", length.out = nrow(hosp_deaths_tested))
+  hosp_deaths_tested <- hosp_deaths_tested[, c(1, 3:10)]
+  hosp_deaths_tested <- tidyr::pivot_longer(hosp_deaths_tested, cols = -date, names_to = "region", values_to = "deaths_tested")
+  
+  # Deaths in hospitals without test but with covid on death certificate
+  hosp_deaths_untested <- openxlsx::read.xlsx(hosp_deaths_path, sheet = 4, startRow = 16, detectDates = TRUE, colNames = TRUE, skipEmptyRows = TRUE, skipEmptyCols = TRUE)
+  hosp_deaths_untested <- hosp_deaths_untested[,1:(ncol(hosp_deaths_untested) - 2)]
+  hosp_deaths_untested <- setNames(data.frame(t(hosp_deaths_untested[,-1])), hosp_deaths_untested[,1])
+  row.names(hosp_deaths_untested) <- NULL
+  hosp_deaths_untested$date <- seq.Date(from = as.Date("2020-02-29"), by = "day", length.out = nrow(hosp_deaths_untested))
+  hosp_deaths_untested <- tidyr::pivot_longer(hosp_deaths_untested, cols = -date, names_to = "region", values_to = "deaths_untested")
+  
+  # Join tested + untested
+  deaths <- dplyr::left_join(hosp_deaths_tested, hosp_deaths_untested, by = c("date", "region")) %>%
+    dplyr::mutate(deaths = deaths_tested + deaths_untested,
+                  region = stringr::str_replace_all(region, "Of", "of"),
+                  region = stringr::str_replace_all(region, "And", "and")) %>%
+    dplyr::select(date, region, deaths)
+  
+}
+
+#--- get tibble of time-series of cases and deaths by region
+getRegionalUKCaseDeathData <- function()
+{
+  
+  # downloading and combining raw UK death data
+  ukRegionalDeaths <- getRawUKRegionalDeathData() %>%
+    dplyr::filter(region != "England")
+  
+  # cleaning data into simple time-series by region
+  # DEPRACTED
+  # ukRegionalDeaths <- hospDeathsByTrust %>% 
+  #   dplyr::tibble() %>%
+  #   tidyr::pivot_longer(cols = ends_with("/20")) %>%
+  #   dplyr::select(region, date = name, deaths = value) %>%
+  #   dplyr::mutate(date = paste0(date, "20"),
+  #                 region = dplyr::case_when(region == "London " ~ "London",
+  #                                           region != "London " ~ region)) %>%
+  #   dplyr::mutate(date = lubridate::mdy(date)) %>%
+  #   dplyr::mutate(region = dplyr::case_when(region == "East Of England" ~ "East of England",
+  #                                           region != "East Of England" ~ region)) %>%
+  #   dplyr::group_by(date, region) %>%
+  #   dplyr::summarise(deaths = sum(deaths)) %>%
+  #   dplyr::arrange(region, date) 
+  
+  # downloading UK case data and cleaning into simple time-series by region
+  ukRegionalCases <- NCoVUtils::get_uk_regional_cases() %>%
+    dplyr::filter(region != "Scotland" & region != "Wales" & region != "Northern Ireland") %>%
+    dplyr::select(-country) %>%
+    dplyr::mutate(region = ifelse(region %in% c('West Midlands', 'East Midlands'), 'Midlands', region),
+                  region = ifelse(region %in% c('North East', 'Yorkshire and The Humber'), 'North East and Yorkshire', region)) %>%
+    dplyr::group_by(date, region) %>%
+    dplyr::summarise(cases = sum(cases)) %>%
+    dplyr::arrange(date, region) 
+  
+  
+  ukRegionalData <- ukRegionalCases %>% 
+    dplyr::right_join(ukRegionalDeaths, by = c("date", "region")) %>%
+    dplyr::mutate(cases  = tidyr::replace_na(cases, 0),
+                  deaths = tidyr::replace_na(deaths, 0)) %>% 
+    dplyr::mutate(country_code = dplyr::case_when(region == "East of England" ~ "EOE",
+                                                  region == "London" ~ "LON",
+                                                  region == "Midlands" ~ "MID",
+                                                  region == "North East and Yorkshire" ~ "NEY",
+                                                  region == "North West" ~ "NOW",
+                                                  region == "South East" ~ "SOE",
+                                                  region == "South West" ~ "SOW")) %>%
+    dplyr::mutate(country  = dplyr::case_when(region == "East of England" ~ "EOE",
+                                              region == "London" ~ "LON",
+                                              region == "Midlands" ~ "MID",
+                                              region == "North East and Yorkshire" ~ "NEY",
+                                              region == "North West" ~ "NOW",
+                                              region == "South East" ~ "SOE",
+                                              region == "South West" ~ "SOW")) %>%
+    dplyr::select(date, country_code, country, new_cases = cases, new_deaths = deaths)
+  
+  return(ukRegionalData)
+  
+}
 
 #--- pulls regional case and death time-series of interest from the various
 #--- sources necessary depending on which regions are of interest
@@ -403,8 +347,11 @@ getRegionalCaseDeathTimeSeries <- function()
   #                                               new_deaths >= 0 ~ new_deaths))
   # 
   
-  londonData <- getRegionalUKCaseDeathData() 
-  
+  londonData <- getRegionalUKCaseDeathData() %>%
+    dplyr::arrange(country_code) %>%
+    dplyr::group_by(country_code) %>%
+    dplyr::arrange(country_code, date)
+   
   genevaData <- readr::read_csv("covid_19/COVID19_Fallzahlen_CH_total_v2.csv") %>%
     dplyr::arrange(abbreviation_canton_and_fl, date) %>%
     dplyr::group_by(abbreviation_canton_and_fl) %>%
@@ -423,7 +370,7 @@ getRegionalCaseDeathTimeSeries <- function()
                   country = "GE") %>%
     dplyr::select(date, country_code, country, new_cases, new_deaths)
   
-  regionalDataTogether <- rbind(newYorkData, genevaData, londonData) 
+  regionalDataTogether <- dplyr::bind_rows(newYorkData, genevaData, londonData)
   
   return(regionalDataTogether)
   
@@ -449,206 +396,51 @@ regionalHPCBayesianData <- function(data_path)
   
 }
 
-#--- Get cumulative incidence estimates for each region of the UK.
-#--- Due to lack of regional death data for both Midlands regions
-#--- The midlands regions are aggregated in this whole analysis
-getEnglandRegionalCumulativeIncidenceEstimates <- function()
+#--- the testing data for the UK, US and Brazil are less easily formatted and accessed
+#--- we put together this function which scrapes the testing data from OWID and combines two
+#--- different time-series into a single smoothed time-series
+getAdHocTestingData <- function()
 {
   
-  asymptomaticPropMid <- 0.5
-  asymptomaticPropLow <- 0.23
-  asymptomaticPropHigh <- 0.7
+  testing_data_all <- readr::read_csv("https://covid.ourworldindata.org/data/testing/covid-testing-all-observations.csv")
   
-  ukRegionalCases <- NCoVUtils::get_uk_regional_cases() %>%
-    dplyr::mutate(region = ifelse(region %in% c('West Midlands', 'East Midlands'), 'Midlands', region),
-                  region = ifelse(region %in% c('North East', 'Yorkshire and The Humber'), 'North East And Yorkshire', region)) %>%
-    dplyr::group_by(date, region) %>%
-    dplyr::summarise(cases = sum(cases)) %>%
-    dplyr::arrange(region, date) 
-    
-  #--- these codes are made up by myself, I wasn't aware of any official codes
-  #--- we combine Yorkshire and the Humber & North East and East Midlands & West Midlands
-  #--- we do so as this is how the deaths data is combined and therefore our estimates also
-  ukRegionalPopulations <- dplyr::tibble(
-    country_code = c("EOE", "LON", "MID", "NEY", "NOW", "SOE", "SOW"),
-    region = c("East of England", "London", "Midlands", "North East And Yorkshire", "North West", "South East", "South West"),
-    population = c(6201214, 8908081, 10704906, 8137524, 7292093, 9133625, 5599735))
+  testing_data_UK_people_tested <- testing_data_all %>%
+    dplyr::filter(Entity == "United Kingdom - people tested")
   
-  dateRange <- ukRegionalCases %>%
-    dplyr::group_by(region) %>%
-    dplyr::summarise(minDate = min(date),
-                     maxDate = max(date)) %>%
-    dplyr::left_join(ukRegionalPopulations) %>% 
-    tidyr::drop_na()
+  testing_data_UK_tests_performed <- testing_data_all %>%
+    dplyr::filter(Entity == "United Kingdom - tests performed")
+  
+  testing_data_UK_clean <- testing_data_UK_people_tested %>% dplyr::filter(Date <= "2020-05-03") %>%
+    dplyr::bind_rows(testing_data_UK_tests_performed %>% dplyr::filter(Date > "2020-05-04")) %>%
+    dplyr::mutate(location = "United Kingdom") %>%
+    dplyr::rename(date = Date, 
+                  iso_code = "ISO code", 
+                  new_tests = "Daily change in cumulative total",
+                  testing_effort_smoothed = "7-day smoothed daily change per thousand") %>%
+    dplyr::select(date, location, iso_code, new_tests, testing_effort_smoothed)
+  
+  testing_data_US_units_unclear <- testing_data_all %>%
+    dplyr::filter(Entity == "United States - units unclear")
   
   
-  regionalUKUnderReportingAllData <- regionalHPCBayesianData("~/Dropbox/bayesian_underreporting_estimates/regional_data/uk_regional_results/") %>%
-    dplyr::left_join(dateRange) %>%
-    dplyr::group_by(country_code) %>%
-    dplyr::mutate(date = seq(unique(maxDate) - 13 - dplyr::n() + 1, unique(maxDate) - 13, 1)) %>%
-    dplyr::select(date, country_code, region, estimate, lower, upper) %>%
-    dplyr::group_by(region) %>%
-    dplyr::arrange(region, date) %>%
-    dplyr::left_join(ukRegionalCases)
+  testing_data_US_tests_performed <- testing_data_all %>%
+    dplyr::filter(Entity == "United States - tests performed")
   
   
-  ukRegionalCasesScaled <- regionalUKUnderReportingAllData %>%
-    dplyr::left_join(ukRegionalPopulations) %>%
-    dplyr::mutate(trueCasesMid  = smooth::sma(cases/estimate)$fitted,
-                  trueCasesLow  = smooth::sma(cases/upper)$fitted,
-                  trueCasesHigh = smooth::sma(cases/lower)$fitted) %>%
-    dplyr::mutate(cumulativeIncidenceMid  = cumsum(trueCasesMid)/(population*(1 - asymptomaticPropMid)),
-                  cumulativeIncidenceLow  = cumsum(trueCasesLow)/(population*(1 - asymptomaticPropLow)),
-                  cumulativeIncidenceHigh = cumsum(trueCasesHigh)/(population*(1 - asymptomaticPropHigh)))
+  testing_data_US_clean <- testing_data_US_units_unclear %>% 
+    dplyr::filter(Date <= "2020-05-19") %>%
+    dplyr::bind_rows(testing_data_US_tests_performed %>% dplyr::filter(Date > min(Date) + 7)) %>%
+    dplyr::mutate(location = "United States") %>%
+    dplyr::rename(date = Date, 
+                  iso_code = "ISO code", 
+                  new_tests = "Daily change in cumulative total",
+                  testing_effort_smoothed = "7-day smoothed daily change per thousand") %>%
+    dplyr::select(date, location, iso_code, new_tests, testing_effort_smoothed)
   
   
-  return(ukRegionalCasesScaled)
+  both_together <- testing_data_UK_clean %>%
+    dplyr::bind_rows(testing_data_US_clean)
   
-  
+  return(both_together)
+
 }
-
-#--- get adjusted cumulative incidence curves for ad-hoc regional runs of under-reporting model
-#--- for comparison against seroprevalence studies
-#--- currently using Geneva, New York and London as study cities
-getRegionalCumulativeIncidenceEstimates <- function()
-{
-  
-  asymptomaticPropMid <- 0.5
-  asymptomaticPropLow <- 0.23
-  asymptomaticPropHigh <- 0.7
-  
-  
-  populationData <- dplyr::tibble(country_code = c("GEN", "NYC", "LON"),
-                                  population  = c(499480, 19453561, 8899375))
-  
-  
-  regionalCaseDeathTS <- getRegionalCaseDeathTimeSeries() 
-  
-  regionalEstimates <- regionalHPCBayesianData("~/Dropbox/bayesian_underreporting_estimates/regional_data/results_for_paper/")
-  
-  dateRange <- regionalCaseDeathTS %>%
-    dplyr::group_by(country_code) %>%
-    dplyr::summarise(minDate = min(date),
-                     maxDate = max(date)) %>%
-    dplyr::left_join(populationData)
-  
-
-  regionalUnderreportingAndRawData <- regionalEstimates %>%
-    dplyr::left_join(dateRange) %>%
-    dplyr::group_by(country_code) %>%
-    dplyr::mutate(date = seq(unique(maxDate) - 13 - dplyr::n() + 1, unique(maxDate) - 13, 1)) %>%
-    dplyr::select(date, country_code, estimate, lower, upper, population) %>%
-    dplyr::left_join(regionalCaseDeathTS) %>%
-    dplyr::select(-country) %>%
-    tidyr::drop_na() %>%
-    dplyr::group_by(country_code) %>%
-    dplyr::mutate(trueCasesMid  = smooth::sma(new_cases/estimate)$fitted,
-                  trueCasesLow  = smooth::sma(new_cases/upper)$fitted,
-                  trueCasesHigh = smooth::sma(new_cases/lower)$fitted) %>%
-    dplyr::mutate(cumulativeIncidenceMid  = cumsum(trueCasesMid)/(population*(1 - asymptomaticPropMid)),
-                  cumulativeIncidenceLow  = cumsum(trueCasesLow)/(population*(1 - asymptomaticPropLow)),
-                  cumulativeIncidenceHigh = cumsum(trueCasesHigh)/(population*(1 - asymptomaticPropHigh)))
-  
-  
-  return(regionalUnderreportingAndRawData)
-  
-}
-
-#--- merge UK death data from different sources - from Kath Sherratt
-getRawUKRegionalDeathData <- function()
-{
-  
-  # PHE Dashboard deaths = England, Wales, Scotland, N Ireland; UK
-  dash_deaths <- readr::read_csv("https://coronavirus.data.gov.uk/downloads/csv/coronavirus-deaths_latest.csv")
-  
-  
-  # Hospital deaths ---------------------------------------------------------
-  
-  # NHS Hospital deaths = England regions
-  date <- paste0(format(Sys.Date() - 1, "%d"), "-", months(Sys.Date()), "-", format(Sys.Date(), "%Y"))
-  hosp_deaths_path <- paste0("https://www.england.nhs.uk/statistics/wp-content/uploads/sites/2/2020/", format(Sys.Date(), "%m"), "/COVID-19-total-announced-deaths-", date, ".xlsx")
-  
-  # Deaths in hospitals with covid test
-  hosp_deaths_tested <- openxlsx::read.xlsx(hosp_deaths_path, sheet = 3, startRow = 16, detectDates = TRUE, colNames = TRUE, skipEmptyRows = TRUE, skipEmptyCols = TRUE)
-  hosp_deaths_tested <- hosp_deaths_tested[,1:(ncol(hosp_deaths_tested) - 2)]
-  hosp_deaths_tested <- setNames(data.frame(t(hosp_deaths_tested[,-1])), hosp_deaths_tested[,1])
-  row.names(hosp_deaths_tested) <- NULL
-  hosp_deaths_tested$date <- seq.Date(from = as.Date("2020-02-29"), by = "day", length.out = nrow(hosp_deaths_tested))
-  
-  # Deaths in hospitals without test but with covid on death certificate
-  hosp_deaths_untested <- openxlsx::read.xlsx(hosp_deaths_path, sheet = 4, startRow = 16, detectDates = TRUE, colNames = TRUE, skipEmptyRows = TRUE, skipEmptyCols = TRUE)
-  hosp_deaths_untested <- hosp_deaths_untested[,1:(ncol(hosp_deaths_untested) - 2)]
-  hosp_deaths_untested <- setNames(data.frame(t(hosp_deaths_untested[,-1])), hosp_deaths_untested[,1])
-  row.names(hosp_deaths_untested) <- NULL
-  hosp_deaths_untested$date <- seq.Date(from = as.Date("2020-02-29"), by = "day", length.out = nrow(hosp_deaths_untested))
-  
-  # Deaths by trust (note dates stored in cols for now)
-  hosp_deaths_bytrust <- openxlsx::read.xlsx(hosp_deaths_path, sheet = 6, startRow = 16, detectDates = TRUE, colNames = TRUE, skipEmptyRows = TRUE, skipEmptyCols = TRUE)
-  hosp_deaths_bytrust <- hosp_deaths_bytrust[2:nrow(hosp_deaths_bytrust), 1:(ncol(hosp_deaths_bytrust) - 2)]
-  colnames(hosp_deaths_bytrust) <- c("region", "code", "trust_name", format(seq.Date(from = as.Date("2020-02-29"), by = "day", length.out = ncol(hosp_deaths_bytrust)-3), "%D"))
-  
-  return(hosp_deaths_bytrust)
-  
-}
-
-#--- get tibble of time-series of cases and deaths by region
-getRegionalUKCaseDeathData <- function()
-{
-  
-  # downloading and combining raw UK death data
-  hospDeathsByTrust <- getRawUKRegionalDeathData()
-  
-  
-  # cleaning data into simple time-series by region
-  ukRegionalDeaths <- hospDeathsByTrust %>% 
-    dplyr::tibble() %>%
-    tidyr::pivot_longer(cols = ends_with("/20")) %>%
-    dplyr::select(region, date = name, deaths = value) %>%
-    dplyr::mutate(date = paste0(date, "20"),
-                  region = dplyr::case_when(region == "London " ~ "London",
-                                            region != "London " ~ region)) %>%
-    dplyr::mutate(date = lubridate::mdy(date)) %>%
-    dplyr::mutate(region = dplyr::case_when(region == "East Of England" ~ "East of England",
-                                            region != "East Of England" ~ region)) %>%
-    dplyr::group_by(date, region) %>%
-    dplyr::summarise(deaths = sum(deaths)) %>%
-    dplyr::arrange(region, date) 
-  
-  # downloading UK case data and cleaning into simple time-series by region
-  ukRegionalCases <- NCoVUtils::get_uk_regional_cases() %>%
-    dplyr::filter(region != "Scotland" & region != "Wales" & region != "Northern Ireland") %>%
-    dplyr::select(-country) %>%
-    dplyr::mutate(region = ifelse(region %in% c('West Midlands', 'East Midlands'), 'Midlands', region),
-                  region = ifelse(region %in% c('North East', 'Yorkshire and The Humber'), 'North East And Yorkshire', region)) %>%
-    dplyr::group_by(date, region) %>%
-    dplyr::summarise(cases = sum(cases)) %>%
-    dplyr::arrange(date, region) 
-  
-  
-  ukRegionalData <- ukRegionalCases %>% 
-    dplyr::right_join(ukRegionalDeaths, by = c("date", "region")) %>%
-    dplyr::mutate(cases  = tidyr::replace_na(cases, 0),
-                  deaths = tidyr::replace_na(deaths, 0)) %>% 
-    dplyr::mutate(country_code = dplyr::case_when(region == "East of England" ~ "EOE",
-                                              region == "London" ~ "LON",
-                                              region == "Midlands" ~ "MID",
-                                              region == "North East And Yorkshire" ~ "NEY",
-                                              region == "North West" ~ "NOW",
-                                              region == "South East" ~ "SOE",
-                                              region == "South West" ~ "SOW")) %>%
-    dplyr::mutate(country  = dplyr::case_when(region == "East of England" ~ "EOE",
-                                              region == "London" ~ "LON",
-                                              region == "Midlands" ~ "MID",
-                                              region == "North East And Yorkshire" ~ "NEY",
-                                              region == "North West" ~ "NOW",
-                                              region == "South East" ~ "SOE",
-                                              region == "South West" ~ "SOW")) %>%
-    dplyr::select(date, country_code, country, new_cases = cases, new_deaths = deaths)
-  
-
-    return(ukRegionalData)
-  
-}
-
-
-

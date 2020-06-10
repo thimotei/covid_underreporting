@@ -1,0 +1,31 @@
+country,city_or_region,regional_or_national_comparison,sample_number,iso_code,study_population,sample_start_date,sample_end_date,sample_date_mid,sample_size,positive_samples,percentage_positive_mid,testing_method,source_type,source
+France,Oise,national,1,FR,Public,2020-03-23,2020-03-27,2020-03-25,661,171,25.9,ELISA/LIPS/S-flow,Pre-print,https://www.medrxiv.org/content/10.1101/2020.04.18.20071134v1.full.pdf
+China,Hubei,national,1,CN,Public,2020-03-10,2020-04-10,2020-03-25,"10,449",81,0.8,MCLIA,peer reviewed,https://www.nature.com/articles/s41591-020-0949-6.pdf
+USA,Santa Clara,national,1,US,Public,2020-04-03,2020-04-03,2020-04-03,"3,330",50,1.5,Lateral flow,Pre-print,https://www.medrxiv.org/content/10.1101/2020.04.14.20062463v1
+Denmark,NA,national,1,DK,Blood donors,2020-04-06,2020-04-08,2020-04-07,"4,072",61,1.5,Lateral flow,Pre-print,https://www.medrxiv.org/content/10.1101/2020.04.24.20075291v1.full.pdf
+USA,LA,national,1,US,Public,2020-04-10,2020-04-14,2020-04-12,863,35,4.3,Lateral flow,Peer reviewed,https://jamanetwork.com/journals/jama/fullarticle/2766367?utm_source=twitter&utm_campaign=content-shareicons&utm_content=article_engagement&utm_medium=social&utm_term=051820#.XsLsOcW59A8.twitter
+Brazil,Rio Grande Do Sul,national,1,BR,Public,2020-04-11,2020-04-13,2020-04-12,"4,188",2,0.1,Lateral flow,Pre-print,https://www.estado.rs.gov.br/upload/arquivos//pesquisa-ufpel-fase2-20200428.pdf
+Netherlands,NA,national,1,NL,Public,2020-04-10,2020-04-17,2020-04-13,"2,096",75,3.6,NA,Gvt. institution,https://www.rivm.nl/en/novel-coronavirus-covid-19/children-and-covid-19
+Slovenia,NA,national,1,SI,Public,2020-04-10,2020-04-10,2020-04-10,"1,318",41,3.1,NA,Gvt. institution,https://www.gov.si/novice/2020-05-06-izjava-glede-aktualnega-stanja-v-zvezi-z-epidemijo-bolezni-covid-19/
+USA,Florida,national,1,US,Public,2020-04-10,2020-04-24,2020-04-17,"1,800",108,6,NA,Gvt. institution,https://www.miamidade.gov/releases/2020-04-24-sample-testing-results.asp
+Iran,Guilan province,national,1,IR,Public,2020-04-05,2020-04-23,2020-04-14,551,117,22,Lateral flow,Pre-print,https://www.medrxiv.org/content/10.1101/2020.04.26.20079244v1.full.pdf
+Spain,Barcelona,national,1,ES,Public,2020-04-21,2020-04-27,2020-04-24,311,17,5.5,Lateral flow,Healthcare institution,https://www.eapsardenya.cat/2020/05/02/primer-estudi-que-revela-la-proteccio-de-la-nostra-poblacio-davant-del-coronavirus/
+Japan,Tokyo,national,1,JP,Public and Healthcare workers,2020-04-21,2020-04-28,2020-04-24,202,12,5.9,Lateral flow,Pre-print,https://www.medrxiv.org/content/10.1101/2020.04.29.20085449v1.full.pdf
+Austria,High Risk Communities,national,1,AT,Public,2020-04-25,2020-04-25,2020-04-25,269,13,4.7,NA,Gvt. institution,http://www.statistik.at/web_de/presse/123051.html
+Brazil,Rio Grande Do Sul,national,2,BR,Public,2020-04-25,2020-04-27,2020-04-26,"4,500",6,0.1,Lateral flow,Pre-print,https://www.estado.rs.gov.br/upload/arquivos//pesquisa-ufpel-fase2-20200428.pdf
+Norway,Oslo,national,1,NO,Public,2020-04-27,2020-04-30,2020-04-28,397,8,2,NA,Gvt. institution,https://www.fhi.no/nyheter/2020/antistoffundersokelse-koronavirus/
+Czech Republic,NA,national,1,CZ,Public,2020-04-30,2020-05-01,2020-04-30,"26,549",107,0.4,NA,Gvt. institution,https://koronavirus.mzcr.cz/infekce-covid-19-prosla-ceskou-populaci-velmi-mirne-podobne-jako-v-okolnich-zemich/
+Luxembourg,NA,national,1,LU,Public,2020-04-15,2020-05-05,2020-04-25,"1,820",35,1.9,ELISA,Pre-print,https://www.medrxiv.org/content/10.1101/2020.05.11.20092916v1.full.pdf
+Japan,Tokyo,national,1,JP,Public,2020-04-21,2020-05-20,2020-05-05,"1,071",41,3.8,Lateral flow,Pre-print,https://www.medrxiv.org/content/10.1101/2020.06.03.20121020v1.full.pdf
+Spain,NA,national,1,ES,Public,2020-04-27,2020-05-11,2020-05-04,"60,983",3049,5,Lateral flow,Gvt. institution,https://www.mscbs.gob.es/gabinete/notasPrensa.do?id=4914
+Sweden,NA,national,1,SE,Public,2020-04-27,2020-05-03,2020-04-30,"1,104",81,7.3,NA,Gvt. institution,https://www.folkhalsomyndigheten.se/nyheter-och-press/nyhetsarkiv/2020/maj/forsta-resultaten-fran-pagaende-undersokning-av-antikroppar-for-covid-19-virus/
+Denmark,NA,national,1,DK,Public,2020-04-20,2020-04-27,2020-04-23,"1,074",12,1.1,ELISA,Gvt. institution,https://files.ssi.dk/Forelobige%20resultater%20fra%20seropraevalensundersogelse%20af%20COVID19-20052020
+Finland,NA,national,1,FI,Public,2020-05-04,2020-05-10,2020-05-07,514,8,1.6,FMIA,Gvt. institution,https://www.thl.fi/roko/cov-vaestoserologia/sero_report_weekly.html
+Belgium,NA,national,1,BE,Health care workers,2020-05-06,2020-05-10,2020-05-08,785,66,8.4,NA,Gvt. institution,https://covid-19.sciensano.be/sites/default/files/Covid19/COVID-19_Weekly%20report_20200529%20-%20NL_0.pdf
+Brazil,Rio Grande Do Sul,national,3,BR,Public,2020-05-09,2020-05-11,2020-05-10,"4,500",20,0.2,Lateral flow,Gvt. institution,https://www.estado.rs.gov.br/upload/arquivos//fase3-epicovid-13mai20.pdf
+Belgium,NA,national,1,BE,Blood donors,2020-05-11,2020-05-19,2020-05-15,900,42,4.7,NA,Gvt. institution,https://covid-19.sciensano.be/sites/default/files/Covid19/COVID-19_Weekly%20report_20200529%20-%20NL_0.pdf
+Finland,NA,national,1,FI,Public,2020-05-11,2020-05-17,2020-05-14,330,4,1.2,FMIA,Gvt. institution,https://www.thl.fi/roko/cov-vaestoserologia/sero_report_weekly.html
+Andorra,NA,national,1,AD,Public,2020-05-04,2020-05-13,2020-05-08,"61,326",5212,8.5,Lateral flow,Gvt. institution,https://www.govern.ad/comunicats/item/11577-martinez-benazet-agraeix-a-institucions-voluntaris-i-a-la-poblacio-que-ha-participat-en-l-estudi-nacional-d-anticossos
+Brazil,NA,national,1,BR,Public,2020-05-14,2020-05-21,2020-05-17,"24,995",347,1.4,Lateral flow,Pre-print,https://www.medrxiv.org/content/10.1101/2020.05.30.20117531v1.full.pdf
+Spain,NA,national,1,ES,Public,2020-05-18,2020-06-01,2020-05-25,"63,564",3305,5.2,Lateral flow,Gvt. institution,https://www.ciencia.gob.es/stfls/MICINN/Ministerio/FICHEROS/INFORME_SEGUNDA_RONDA.pdf
+UK,NNA,national,1,GB,Public,2020-04-26,2020-05-24,2020-05-10,885,60,6.78,ELISA,Gvt. institution,https://www.ons.gov.uk/peoplepopulationandcommunity/healthandsocialcare/conditionsanddiseases/bulletins/coronaviruscovid19infectionsurveypilot/28may2020

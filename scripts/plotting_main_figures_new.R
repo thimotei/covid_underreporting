@@ -87,3 +87,12 @@ tmp <- readr::read_csv("~/Downloads/full-list-covid-19-tests-per-day.csv") %>%
 
 #----------- making adjusted case curves figure -------------#
 
+
+figure3 <- figure3Fun()
+
+
+#----------- making map of cumulative incidence -------------#
+
+figure4 <- figure4Fun()
+
+figure4

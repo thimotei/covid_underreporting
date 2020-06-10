@@ -102,29 +102,113 @@ figure1FunNoTesting <- function(data, countryArg, tweak1, tweak2)
 
 #------------------- function for producing the serology figure
 
-figure2Fun <- function(dataInputDF, observedDataDF)
+figure2Fun <- function()
 {
   
-  plotIncidence <- dataInputDF %>%
-    dplyr::group_by(country) %>%
-    dplyr::left_join(observedDataDF, by = "country") %>%
-    #tidyr::drop_na() %>%
-    dplyr::group_by(country) %>%
-    ggplot2::ggplot(ggplot2::aes()) +
-    ggplot2::scale_x_date() + 
-    ggplot2::geom_ribbon(ggplot2::aes(x = date, ymin = cumulativeIncidenceLow, ymax = cumulativeIncidenceHigh), alpha = 0.3, colour = NA, fill = "dodgerblue") +
-    ggplot2::geom_point(ggplot2::aes(x = dateEnd - 13, y = observedEstimateMid)) +
-    ggplot2::geom_errorbar(ggplot2::aes(x = dateEnd - 13, ymin = observedEstimateLow, ymax = observedEstimateHigh), 
-                           width = 0.2, position = ggplot2::position_dodge(0.9)) +
-    #ggplot2::geom_point(ggplot2::aes(x = dateMid, y = observedEstimate)) +
-    ggplot2::geom_vline(data = observedDataDF, ggplot2::aes(xintercept = dateStart), linetype = "dashed") +
-    ggplot2::geom_vline(data = observedDataDF, ggplot2::aes(xintercept = dateEnd), linetype = "dashed") +
-    ggplot2::xlab("Date") +
-    ggplot2::ylab("Cumulative prevalence (%)") + 
-    ggplot2::scale_y_continuous(labels = scales::percent) +
-    ggplot2::facet_wrap(~country, scales = "free")
+  # making national plot
+  allAdjustedCaseData <- getAdjustedCaseDataNational()  
   
-  return(plotIncidence)
+  country_codes <- readr::read_csv("covid_underreporting/data/country_codes.csv")
+  
+  serology_study_results <- readr::read_csv("covid_underreporting/data/national serology estimates.csv") %>%
+    dplyr::rename(two_letter_code = iso_code) %>%
+    dplyr::left_join(country_codes, by = "two_letter_code") %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(percentage_positive_mid = percentage_positive_mid/100,
+                  lower_ci = signif(binom_min(positive_samples, sample_size), 2)/100,
+                  upper_ci = signif(binom_max(positive_samples, sample_size), 2)/100) %>%
+    dplyr::rename(iso_code = three_letter_code)
+  
+  
+  all_countries_with_serology <- serology_study_results %>%
+    dplyr::pull(iso_code) %>%
+    unique() 
+  
+  # regional estimates required for these countries
+  # we are concentrating on USA, UK and others we can find regional data for
+  countries_to_exclude <- c("AUT", "CHN", "FRA", "IRN", "SVN", "USA", "CHE", "JPN")
+  
+  countries_of_interest_with_serology <- setdiff(all_countries_with_serology, countries_to_exclude)
+
+  adjusted_cases_and_serology <- allAdjustedCaseData %>%
+    dplyr::left_join(serology_study_results, by = "iso_code") %>%
+    dplyr::filter(iso_code %in% countries_of_interest_with_serology)
+  
+  plot_national <- adjusted_cases_and_serology %>%
+    dplyr::group_by() %>%
+    ggplot2::ggplot() +
+    ggplot2::geom_ribbon(ggplot2::aes(x = date, ymin = cumulative_incidence_low, ymax = cumulative_incidence_high), alpha = 0.3, colour = NA, fill = "dodgerblue") +
+    ggplot2::geom_point(ggplot2::aes(x = sample_end_date - 13, y = percentage_positive_mid)) +
+    ggplot2::geom_errorbar(ggplot2::aes(x = sample_end_date - 13, ymin = lower_ci, ymax = upper_ci), 
+                           width = 0.2) +
+    ggplot2::geom_vline(ggplot2::aes(xintercept = sample_end_date), linetype = "dashed") +
+    ggplot2::labs(title = "A",
+                  x = "", y = "Cumulative incidence (%)") + 
+    ggplot2::theme(
+    axis.title.x = ggplot2::element_blank()) +
+    ggplot2::scale_y_continuous(labels = scales::percent) +
+    ggplot2::facet_wrap(~country, scales = "free_y") + 
+    ggplot2::theme_minimal()
+  
+  regional_data <- getAdjustedRegionalCaseAndSerologyData() %>%
+    dplyr::mutate(region = dplyr::case_when(region == "North East and Yorkshire" ~ "North East",
+                                            region != "North East and Yorkshire" ~ region))
+  
+  main_plot_regions <- c("Geneva", "London", "New York")
+  all_regions <- regional_data %>% 
+    dplyr::pull(region) %>% unique()
+  
+  remaining_regions <- setdiff(all_regions, main_plot_regions)
+  
+  plot_regional <- regional_data %>%
+    dplyr::filter(region %in% main_plot_regions) %>%
+    dplyr::group_by(region) %>%
+    ggplot2::ggplot() +
+    ggplot2::geom_ribbon(ggplot2::aes(x = date_infection, ymin = cumulative_incidence_low, ymax = cumulative_incidence_high), alpha = 0.3, colour = NA, fill = "dodgerblue") +
+    ggplot2::geom_point(ggplot2::aes(x = sample_end_date - 13, y = percentage_positive_mid)) +
+    ggplot2::geom_errorbar(ggplot2::aes(x = sample_end_date - 13, ymin = lower_ci, ymax = upper_ci), 
+                           width = 0.2) +
+    ggplot2::geom_vline(ggplot2::aes(xintercept = sample_end_date), linetype = "dashed") +
+    ggplot2::labs(title = "B",
+         x ="", y = "") + 
+    ggplot2::theme(
+      axis.title.x = ggplot2::element_blank(),
+      axis.title.y = ggplot2::element_blank()) +
+    ggplot2::scale_y_continuous(labels = scales::percent) +
+    ggplot2::facet_wrap(~region, scales = "free_y") + 
+    ggplot2::theme_minimal()
+    
+  plot_regional_supplementary <- regional_data %>%
+    dplyr::filter(region %in% remaining_regions) %>%
+    dplyr::group_by(region) %>%
+    ggplot2::ggplot() +
+    ggplot2::geom_ribbon(ggplot2::aes(x = date_infection, ymin = cumulative_incidence_low, ymax = cumulative_incidence_high), alpha = 0.3, colour = NA, fill = "dodgerblue") +
+    ggplot2::geom_point(ggplot2::aes(x = sample_end_date - 13, y = percentage_positive_mid)) +
+    ggplot2::geom_errorbar(ggplot2::aes(x = sample_end_date - 13, ymin = lower_ci, ymax = upper_ci), 
+                           width = 0.2) +
+    ggplot2::geom_vline(ggplot2::aes(xintercept = sample_end_date), linetype = "dashed") +
+    ggplot2::labs(title = "C",
+                  x ="", y = "") + 
+    ggplot2::theme(
+    axis.title.x = ggplot2::element_blank(),
+    axis.title.y = ggplot2::element_blank()) +
+    ggplot2::scale_y_continuous(labels = scales::percent) +
+    ggplot2::facet_wrap(~region, scales = "free_y") + 
+    ggplot2::theme_minimal()
+  
+  layout <- "
+    AAAABBB
+    AAAACCC
+    AAAACCC
+    "
+  
+  plot_final <- (plot_national 
+                 + plot_regional
+                 + plot_regional_supplementary 
+                 + plot_layout(design = layout)) 
+  
+  return(plot_final)
+  
 }
 
 #--------------------- function for producing figure 3: true and adjusted daily
@@ -133,7 +217,7 @@ figure2Fun <- function(dataInputDF, observedDataDF)
 figure3Fun <- function()
 {
   
-  allAdjustedCaseData <- getAdjustedCaseData()
+  allAdjustedCaseData <- getAdjustedCaseDataNational()
   
   top10Countries <- allAdjustedCaseData %>%
     dplyr::group_by(country) %>%
@@ -147,7 +231,7 @@ figure3Fun <- function()
   p1 <- allAdjustedCaseData %>%
     dplyr::group_by(country) %>%
     dplyr::filter(country %in% top10Countries) %>%
-    dplyr::filter(new_cases > 5 & new_cases_adjusted_mid > 5 & new_cases_adjusted_low > 5 & new_cases_adjusted_high > 5) %>%
+    dplyr::filter(new_cases > 5 & new_cases_adjusted_smooth_mid > 5 & new_cases_adjusted_smooth_low > 5 & new_cases_adjusted_smooth_high > 5) %>%
     dplyr::filter(date > "2020-03-15") %>%
     ggplot2::ggplot(ggplot2::aes(x = date, y = new_cases_smoothed, color = country)) + 
     ggplot2::geom_line() + 
@@ -166,9 +250,9 @@ figure3Fun <- function()
   p2 <- allAdjustedCaseData %>%
     dplyr::group_by(country) %>%
     dplyr::filter(country %in% top10Countries) %>%
-    dplyr::filter(new_cases > 5 & new_cases_adjusted_mid > 5 & new_cases_adjusted_low > 5 & new_cases_adjusted_high > 5) %>%
+    dplyr::filter(new_cases > 5 & new_cases_adjusted_smooth_mid > 5 & new_cases_adjusted_smooth_low > 5 & new_cases_adjusted_smooth_high > 5) %>%
     dplyr::filter(date > "2020-03-15") %>%
-    ggplot2::ggplot(ggplot2::aes(x = date, y = new_cases_adjusted_mid, color = country)) + 
+    ggplot2::ggplot(ggplot2::aes(x = date, y = new_cases_adjusted_smooth_mid, color = country)) + 
     ggplot2::geom_line() + 
     ggplot2::labs(x = "", y = "") + 
     ggplot2::scale_y_log10() + 
@@ -194,12 +278,13 @@ figure3Fun <- function()
 
 figure4Fun <- function()
 {
+  library(patchwork)
   
-  allAdjustedCaseData <- getAdjustedCaseData()  
+  allAdjustedCaseData <- getAdjustedCaseDataNational()  
   cumulativeIncidenceEstimatesWorldMap   <- allAdjustedCaseData %>% dplyr::filter(date == max(date))
-  cumulativeIncidenceEstimatesEuropeMap1 <- allAdjustedCaseData %>% dplyr::filter(date ==  "2020-03-10")
-  cumulativeIncidenceEstimatesEuropeMap2 <- allAdjustedCaseData %>% dplyr::filter(date ==  "2020-04-10")
-  cumulativeIncidenceEstimatesEuropeMap3 <- allAdjustedCaseData %>% dplyr::filter(date ==  "2020-05-10")
+  cumulativeIncidenceEstimatesEuropeMap1 <- allAdjustedCaseData %>% dplyr::filter(date ==  "2020-03-22")
+  cumulativeIncidenceEstimatesEuropeMap2 <- allAdjustedCaseData %>% dplyr::filter(date ==  "2020-04-22")
+  cumulativeIncidenceEstimatesEuropeMap3 <- allAdjustedCaseData %>% dplyr::filter(date ==  "2020-05-22")
   
   
   # cumulativeIncidenceEstimatesWorldMap <- getIncidenceUpToDateData(dateInput = NULL)
@@ -309,4 +394,24 @@ figure2Supp <- function()
   
 }
 
+figure3Supp <- function()
+{
+  
+  regional_data <- getAdjustedRegionalCaseAndSerologyData()
+  
+  plot_regional_supplementary <- regional_data %>%
+    dplyr::group_by(region) %>%
+    ggplot2::ggplot() +
+    ggplot2::geom_ribbon(ggplot2::aes(x = date_infection, ymin = cumulative_incidence_low, ymax = cumulative_incidence_high), alpha = 0.3, colour = NA, fill = "dodgerblue") +
+    ggplot2::geom_point(ggplot2::aes(x = sample_end_date - 13, y = percentage_positive_mid)) +
+    ggplot2::geom_errorbar(ggplot2::aes(x = sample_end_date - 13, ymin = lower_ci, ymax = upper_ci), 
+                           width = 0.2) +
+    ggplot2::geom_vline(ggplot2::aes(xintercept = sample_end_date), linetype = "dashed") +
+    ggplot2::xlab("Date") +
+    ggplot2::ylab("Cumulative incidence (%)") + 
+    ggplot2::scale_y_continuous(labels = scales::percent) +
+    ggplot2::facet_wrap(~region, scales = "free_y")
+  
+  
+}
 

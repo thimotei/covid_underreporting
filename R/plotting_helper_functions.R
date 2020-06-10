@@ -48,3 +48,16 @@ mapPlottingFunction <- function(dataInput, europe = TRUE)
 }
 
 
+binom_min <- function(x, n)
+{
+  tmp <- binom.test(x, n)
+  signif(tmp$conf.int[1]*100, 2)
+  
+}
+
+binom_max <- function(x, n)
+{
+  tmp <- binom.test(x, n)
+  signif(tmp$conf.int[2]*100, 2)
+  
+}
