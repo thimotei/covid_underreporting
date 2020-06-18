@@ -11,8 +11,8 @@ figure1Fun <- function(data, countryArg, tweak1, tweak2)
     dplyr::filter(country == countryArg)
 
   yLimitsTestingDat <- plotDat %>%
-    dplyr::summarise(yMin = min(new_tests_smoothed_per_thousand),
-                     yMax = max(new_tests_smoothed_per_thousand))
+    dplyr::summarise(yMin = min(testing_effort),
+                     yMax = max(testing_effort))
   
 
   yLimitsTesting <- c(yLimitsTestingDat$yMin - tweak1, yLimitsTestingDat$yMax + tweak2)
@@ -25,7 +25,7 @@ figure1Fun <- function(data, countryArg, tweak1, tweak2)
   yLimitsUnderreporting <- c(yLimitsUnderreportingDat$yMin - tweak1, yLimitsUnderreportingDat$yMax + tweak2)
   
 
-  plot(plotDat$date, plotDat$new_tests_smoothed_per_thousand,
+  plot(plotDat$date, plotDat$testing_effort,
        type = "l",
        lty = 2, 
        lwd = 1,
@@ -226,7 +226,6 @@ figure3Fun <- function()
     dplyr::pull(country)
   
   options(scipen = 999)
-  
   
   p1 <- allAdjustedCaseData %>%
     dplyr::group_by(country) %>%

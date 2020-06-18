@@ -18,17 +18,9 @@ globalPrevalenceEstimates <- function()
     unique()
   
   
-  data_path <- "~/Dropbox/bayesian_underreporting_estimates/current_estimates_extracted/"
+  data_path <- "~/Dropbox/bayesian_underreporting_estimates/current_estimates_extracted_not_age_adjusted/"
   files <- dir(path = data_path,
                pattern = "*.rds")
-  
-  dateRange <- allDatRaw %>%
-    dplyr::group_by(country) %>%
-    dplyr::summarise(minDate = min(date),
-                     maxDate = max(date)) %>%
-    dplyr::left_join(countryCodesLookUp) %>% 
-    tidyr::drop_na() 
-  
   
   dataTmp <- dplyr::tibble(countryCode = files) %>% 
     dplyr::mutate(file_contents = purrr::map(countryCode, 
@@ -38,9 +30,7 @@ globalPrevalenceEstimates <- function()
     tidyr::unnest(cols = c(file_contents)) %>%
     dplyr::mutate(countryCode = stringr::str_remove(countryCode, "result_")) %>% 
     dplyr::mutate(countryCode = stringr::str_remove(countryCode, ".rds")) %>%
-    dplyr::left_join(dateRange) %>%
     dplyr::group_by(countryCode) %>%
-    dplyr::mutate(date = seq(unique(maxDate) - 13 - dplyr::n() + 1, unique(maxDate) - 13, 1)) %>%
     dplyr::select(date, everything()) %>%
     dplyr::left_join(countryCodesLookUp) %>%
     dplyr::left_join(allDatRaw) %>%

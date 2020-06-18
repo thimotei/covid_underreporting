@@ -10,7 +10,7 @@ source("covid_underreporting/R/plotting_functions.R")
 
 # get all test data, case data and underreporting estimates in single tibble=
 
-allUnderReportingAndTestingData <- getUnderReportingCaseDeathPopulationAndTestingData() %>% tidyr::drop_na()
+allUnderReportingAndTestingData <- getUnderReportingCaseDeathPopulationAndTestingData()
 allAdjustedCaseData <- getAdjustedCaseDataNational()
 
 
@@ -18,23 +18,26 @@ allAdjustedCaseData <- getAdjustedCaseDataNational()
 
 # calling the plotting function to make figure 1 style plots for every country in one large .pdf
 
-countriesOfInterest <- c("Austria", "Bangladesh",  "Belgium", 
-                         "Italy", "South Korea", "Switzerland",
-                         "Sweden", "United Kingdom", "USA") %>% sort()
+countries_of_interest <- c("Austria", "Bangladesh",  "Belgium", 
+                           "Denmark", "Italy", "South Korea",
+                           "Switzerland", "United Kingdom", "USA") %>% sort()
 
 
-png("covid_underreporting/figures/figure_1.png", width = 10, height = 8, units = "in", res = 100)
+#png("covid_underreporting/figures/figure_1.png", width = 10, height = 8, units = "in", res = 100)
 plotData <- allUnderReportingAndTestingData %>%
   dplyr::mutate(country = dplyr::case_when(country == "Korea (the Republic of)" ~ "South Korea",
-                                            country == "United States of America (the)" ~ "USA",
-                                            country != "Korea (the Republic of)" | country != "United States of America (the)" ~ country)) %>%
-  dplyr::filter(country %in% countriesOfInterest) %>%
+                                           country == "United States of America (the)" ~ "USA",
+                                           country != "Korea (the Republic of)" | country != "United States of America (the)" ~ country)) %>% 
+  dplyr::filter(country %in% countries_of_interest) %>%
+  dplyr::mutate(testing_effort = zoo::rollmean(new_tests/new_cases, k = 7, fill = NA)) %>%
+  dplyr::mutate(testing_effort = dplyr::na_if(testing_effort, "Inf")) %>%
+  dplyr::select(-new_tests.x, -new_tests.y) %>%
   tidyr::drop_na()
 fontsize1 <- 1
 par(mar = c(3, 3, 3, 3))
 par(oma = c(2, 2, 2, 2))
 par(mfrow = c(3, 3))
-for(countryArg in countriesOfInterest)
+for(countryArg in countries_of_interest)
 {
   tryCatch(
     {
