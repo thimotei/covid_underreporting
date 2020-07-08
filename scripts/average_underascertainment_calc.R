@@ -1,65 +1,34 @@
-all_underascertainment_data <- function()
-{
+here::here() %>% setwd() 
 
-  underReportingPath <- "~/Dropbox/bayesian_underreporting_estimates/current_estimates_extracted_not_age_adjusted/"
-  files <- dir(path = underReportingPath,
-               pattern = "*.rds")
-  
-  underReportingRawData <- dplyr::tibble(countryCode = files) %>% 
-    dplyr::mutate(file_contents = purrr::map(countryCode, 
-                                             ~ readRDS(file.path(underReportingPath, .)))) %>% 
-    tidyr::unnest(cols = c(file_contents)) %>%
-    dplyr::mutate(countryCode = stringr::str_remove(countryCode, "result_")) %>% 
-    dplyr::mutate(countryCode = stringr::str_remove(countryCode, ".rds")) %>%
-    dplyr::group_by(countryCode) %>%
-    dplyr::select(date, everything()) %>%
-    dplyr::select(date, countryCode, everything()) %>%
-    dplyr::group_by(countryCode) %>%
-    dplyr::ungroup() %>%
-    dplyr::rename(iso_code = countryCode)
-  
-}
+source("covid_underreporting/R/data_helper_functions.R")
+
 
 underascertainment_data <- all_underascertainment_data()
 
-european_union_two_letter_codes <- c('AT', 'BE', 'BG', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'HR', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'GB')
-
-country_code_data <- readr::read_csv("covid_underreporting/data/country_data.csv")
-european_union_countries <- country_code_data %>% 
-  dplyr::filter(Continent_Name == "Europe") %>%
-  dplyr::rename(iso_code = Three_Letter_Country_Code)
+eu_countries <- dplyr::tibble(iso_code =
+                                c("BEL", "BGR", "CZE", "DNK", "DEU", "EST", "IRL", "GRC", "ESP", "FRA", "HRV", "ITA",
+                                  "CYP", "LVA", "LTU", "LUX", "HUN", "MLT", "NLD", "AUT", "POL", "PRT", "ROU", "SVN",
+                                  "SVK", "FIN", "SWE")) %>% dplyr::arrange()
 
 
-underascertainment_data_europe <- underascertainment_data %>%
-  dplyr::left_join(european_union_countries) %>%
-  dplyr::select(date, iso_code, estimate, lower, upper)
+# underascertainment_data_europe <- underascertainment_data %>%
+#   dplyr::left_join(eu_countries) %>%
+#   dplyr::select(date, iso_code, estimate, lower, upper)
 
-average_underascertainment_march <- underascertainment_data_europe %>%
+average_underascertainment_march <- underascertainment_data %>%
+  dplyr::filter(iso_code %in% dplyr::pull(eu_countries)) %>%
   dplyr::filter(date >= "2020-03-01" & date <= "2020-03-31") %>%
-  dplyr::summarise(average_underreporting_mid  = mean(estimate),
-                   average_underreporting_low  = mean(lower),
-                   average_underreporting_high = mean(upper)) %>%
-  dplyr::mutate(average_underreporting = paste0(signif(average_underreporting_mid*100, 3),
-                                                "% (", signif(average_underreporting_low*100, 3), 
-                                                "% - ", signif(average_underreporting_high*100, 3), "%)")) %>%
-  dplyr::select(average_underreporting)
+  dplyr::summarise(average_underreporting_high  = min(estimate),
+                   average_underreporting_low  = max(estimate))
 
-average_underascertainment_april <- underascertainment_data_europe %>%
+average_underascertainment_april <- underascertainment_data %>%
+  dplyr::filter(iso_code %in% dplyr::pull(eu_countries)) %>%
   dplyr::filter(date >= "2020-04-01" & date <= "2020-04-30") %>%
-  dplyr::summarise(average_underreporting_mid  = mean(estimate),
-                   average_underreporting_low  = mean(lower),
-                   average_underreporting_high = mean(upper)) %>%
-  dplyr::mutate(average_underreporting = paste0(signif(average_underreporting_mid*100, 3),
-                                                "% (", signif(average_underreporting_low*100, 3), 
-                                                "% - ", signif(average_underreporting_high*100, 3), "%)")) %>%
-  dplyr::select(average_underreporting)
+  dplyr::summarise(average_underreporting_high  = min(estimate),
+                   average_underreporting_low  = max(estimate))
 
-average_underascertainment_may <- underascertainment_data_europe %>%
+average_underascertainment_may <- underascertainment_data %>%
+  dplyr::filter(iso_code %in% dplyr::pull(eu_countries)) %>%
   dplyr::filter(date >= "2020-05-01" & date <= "2020-05-31") %>%
-  dplyr::summarise(average_underreporting_mid  = mean(estimate),
-                   average_underreporting_low  = mean(lower),
-                   average_underreporting_high = mean(upper)) %>%
-  dplyr::mutate(average_underreporting = paste0(signif(average_underreporting_mid*100, 3),
-                                                "% (", signif(average_underreporting_low*100, 3), 
-                                                "% - ", signif(average_underreporting_high*100, 3), "%)")) %>%
-  dplyr::select(average_underreporting)
+  dplyr::summarise(average_underreporting_high  = min(estimate),
+                   average_underreporting_low  = max(estimate))

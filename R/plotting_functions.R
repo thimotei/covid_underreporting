@@ -4,105 +4,282 @@
 
 
 #---------------------- figure 1 uses under-reporting and testing data function
-figure1Fun <- function(data, countryArg, tweak1, tweak2)
+figure_1_fun <- function(under_reporting_data, testing_data, iso_code_arg)
 {
   
-  plotDat <- data %>%
-    dplyr::filter(country == countryArg)
+  country_names <- dplyr::tibble(country = countrycode::countrycode(iso_code_arg, "iso3c", "iso.name.en")) %>%
+    dplyr::mutate(country = dplyr::case_when(country == "United States of America (the)" ~ "USA",
+                                             country == "Russian Federation (the)" ~ "Russia",
+                                             country == "Iran (Islamic Republic of)" ~ "Iran",
+                                             country != "USA" || "Russia" || "Iran" ~ country))
+  
+  plot_dat_under_reporting <- under_reporting_data %>%
+    dplyr::filter(iso_code == iso_code_arg) %>%
+    dplyr::mutate(estimate = estimate*100,
+                  lower = lower*100,
+                  upper = upper*100)
+  
+  plot_dat_testing <- testing_data %>%
+    dplyr::filter(iso_code == iso_code_arg)
+  
+  x_limits_both_dat <- plot_dat_under_reporting %>%
+    dplyr::summarise(x_min = min(date),
+                     x_max = max(date))
+  
+  x_limits_both <- c(x_limits_both_dat$x_min, x_limits_both_dat$x_max)
 
-  yLimitsTestingDat <- plotDat %>%
-    dplyr::summarise(yMin = min(testing_effort),
-                     yMax = max(testing_effort))
-  
+  if(iso_code_arg %in% row1)
+  {
+    y_limits_under_reporting <- c(y_min = 0, y_max = 100)
+  }
+  if(iso_code_arg %in% row2)
+  {
+    y_limits_under_reporting <- c(y_min = 0, y_max = 100)
+  }
+  if(iso_code_arg %in% row3)
+  {
+    y_limits_under_reporting <- c(y_min = 0, y_max = 40)
+  }
 
-  yLimitsTesting <- c(yLimitsTestingDat$yMin - tweak1, yLimitsTestingDat$yMax + tweak2)
-  
-  yLimitsUnderreportingDat <- plotDat %>%
-    dplyr::summarise(yMin = min(lower),
-                     yMax = max(upper))
-  
-  
-  yLimitsUnderreporting <- c(yLimitsUnderreportingDat$yMin - tweak1, yLimitsUnderreportingDat$yMax + tweak2)
-  
 
-  plot(plotDat$date, plotDat$testing_effort,
-       type = "l",
-       lty = 2, 
-       lwd = 1,
-       xlab = "",
-       ylab = "",
-       main = countryArg,
-       ylim = yLimitsTesting,
-       axes = FALSE)
-  axis(side = 2, ylim = yLimitsTesting, col = "black", las = 1)
-  box()
+  # y_limits_under_reporting <- c(y_min = 0, y_max = 100)
+  
+  #--- uncomment for ad-hoc country runs
+  # 
+  # if(!(iso_code_arg %in% row1) | !(iso_code_arg %in% row2) | !(iso_code_arg %in% row3))
+  # {
+  #   y_limits_under_reporting_dat <- plot_dat_under_reporting %>%
+  #     dplyr::summarise(y_min = min(lower),
+  #                      y_max = max(upper))
+  #   y_limits_under_reporting <- c(y_limits_under_reporting_dat$y_min, y_limits_under_reporting_dat$y_max)
+  # }
+  # 
+  y_limits_testing_dat <- plot_dat_testing %>%
+    dplyr::summarise(y_min = min(testing_effort),
+                     y_max = max(testing_effort))
   
   
-  par(new = TRUE)
-
-  #--------------- plotting the second data set, the under-reporting estimate over time
-  plot(plotDat$date, plotDat$estimate, 
+  y_limits_testing <- c(y_limits_testing_dat$y_min, y_limits_testing_dat$y_max)
+  
+  #--------------- plotting the first data set, the under-reporting estimate over time
+  plot(plot_dat_under_reporting$date, plot_dat_under_reporting$estimate, 
        type = "l",
        las = 1,
        xlab = "", 
        ylab = "",
        bty = "n",
        axes = FALSE,
-       ylim = yLimitsUnderreporting)
-  polygon(x = c(plotDat$date, rev(plotDat$date)),
-          y = c(plotDat$lower, rev(plotDat$upper)),
-          col =  adjustcolor("dodgerblue", alpha.f = 0.30), border = NA)
-
-
-  axis(side = 4, ylim = yLimitsUnderreporting, col = "black", las = 1)
+       xlim = x_limits_both, 
+       ylim = y_limits_under_reporting)
+  polygon(x = c(plot_dat_under_reporting$date, rev(plot_dat_under_reporting$date)),
+          y = c(plot_dat_under_reporting$lower, rev(plot_dat_under_reporting$upper)),
+          col =  adjustcolor("dodgerblue", alpha.f = 0.42), border = NA)
+  axis(side = 2, ylim = y_limits_under_reporting, col = "black", las = 1)
+  box()
+  
+  par(new = TRUE)
+  #--------------- plotting the second data set, the under-reporting estimate over time
+  plot(plot_dat_testing$date, plot_dat_testing$testing_effort,
+       type = "l",
+       lty = 2, 
+       lwd = 1,
+       xlab = "",
+       ylab = "",
+       main = country_names,
+       xlim = x_limits_both,
+       ylim = y_limits_testing,
+       axes = FALSE)
+  axis(side = 4, ylim = y_limits_under_reporting, col = "black", las = 1)
   
   # making the time axis
-  tickPositions = seq(min(plotDat$date), max(plotDat$date), length.out = 4)
-  axis.Date(side = 1, plotDat$date, at = tickPositions, srt = 20)
-
+  tick_positions = seq(min(plot_dat_under_reporting$date), max(plot_dat_under_reporting$date), length.out = 4)
+  axis.Date(side = 1, lubridate::month(plot_dat_under_reporting$date, label = TRUE), at = tick_positions, srt = 20)
 }
 
-figure1FunNoTesting <- function(data, countryArg, tweak1, tweak2)
+#--------------------- function for producing figure 3: true and adjusted daily
+#--------------------- new case curves for top n countries
+
+figure_2_fun <- function()
 {
   
-  plotDat <- data %>%
-    dplyr::filter(country == countryArg)
+  all_adjusted_case_data <- getAdjustedCaseDataNational()
   
-  yLimitsUnderreportingDat <- plotDat %>%
-    dplyr::summarise(yMin = min(lower),
-                     yMax = max(upper))
+  options(scipen = 999)
+  
+  #--- making first panel
+  
+  top_10_confirmed_case_countries <- all_adjusted_case_data %>%
+    dplyr::group_by(country) %>%
+    dplyr::summarise(total_cases = sum(new_cases)) %>%
+    dplyr::top_n(10) %>%
+    dplyr::pull(country)
+  
+  plot_1_dat <- all_adjusted_case_data %>%
+    dplyr::group_by(country) %>%
+    dplyr::filter(country %in% top_10_confirmed_case_countries) %>%
+    dplyr::filter(new_cases > 5 & new_cases_adjusted_smooth_mid > 5 & new_cases_adjusted_smooth_low > 5 & new_cases_adjusted_smooth_high > 5) %>%
+    dplyr::filter(date > "2020-03-15") 
+  
+  min_cases <- plot_1_dat %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(new_cases_smoothed == min(new_cases_smoothed)) %>%
+    dplyr::pull(new_cases_smoothed)
+  
+  max_cases <- plot_1_dat %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(new_cases_adjusted_smooth_mid == max(new_cases_adjusted_smooth_mid)) %>%
+    dplyr::pull(new_cases_adjusted_smooth_mid)
+  
+  p1 <- plot_1_dat %>%
+    ggplot2::ggplot(ggplot2::aes(x = date, y = new_cases_smoothed, color = country)) + 
+    ggplot2::geom_line() + 
+    ggplot2::labs(x = "", y = "") + 
+    ggplot2::scale_y_log10() +
+    ggthemes::theme_few() + 
+    directlabels::geom_dl(ggplot2::aes(label = country), 
+                          method = list(directlabels::dl.combine("last.points"),
+                                        cex = 0.6)) +
+    ggplot2::theme(legend.position="none",
+                   axis.title  = ggplot2::element_text(size = 11),
+                   plot.margin = ggplot2::unit(c(0, 0.5, -0.49, 0.5), "cm")) + 
+    ggplot2::labs(tag = "A",
+                  x = "", y = "Confirmed cases by date of confirmation") + 
+    viridis::scale_color_viridis(discrete = TRUE, begin = 0, end = 0.82) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)) +
+    ggplot2::expand_limits(x = as.Date("2020-06-20"),
+                           y = max_cases)
   
   
-  yLimitsUnderreporting <- c(yLimitsUnderreportingDat$yMin - tweak1, yLimitsUnderreportingDat$yMax + tweak2)
+  p2 <- plot_1_dat %>%
+    ggplot2::ggplot(ggplot2::aes(x = date, y = new_cases_adjusted_smooth_mid, color = country)) + 
+    ggplot2::geom_line() + 
+    ggplot2::labs(x = "", y = "") + 
+    ggplot2::scale_y_log10() + 
+    ggthemes::theme_few() + 
+    directlabels::geom_dl(ggplot2::aes(label = country), 
+                          method = list(directlabels::dl.combine("last.points"),
+                                        cex = 0.6)) +
+    ggplot2::theme(legend.position="none",
+                   axis.title  = ggplot2::element_text(size = 11),
+                   plot.margin = ggplot2::unit(c(0, 0.5, -0.49, 0.5), "cm")) + 
+    ggplot2::labs(tag = "",
+                  x = "", y = "New adjusted cases by date of confirmation") + 
+    viridis::scale_color_viridis(discrete = TRUE, begin = 0, end = 0.82) + 
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)) + 
+    ggplot2::expand_limits(x = as.Date("2020-06-20"),
+                           y = min_cases)
+  
+  #--- making 2nd panel
+  
+  top_10_adjusted_case_countries <- all_adjusted_case_data %>%
+    dplyr::group_by(country) %>%
+    dplyr::summarise(total_adjusted_cases = sum(new_cases_adjusted_mid)) %>%
+    dplyr::top_n(10) %>%
+    dplyr::pull(country)
+  
+  plot_2_dat <- all_adjusted_case_data %>%
+    dplyr::group_by(country) %>%
+    dplyr::filter(country %in% top_10_adjusted_case_countries) %>%
+    dplyr::filter(new_cases > 5 & new_cases_adjusted_smooth_mid > 5 & new_cases_adjusted_smooth_low > 5 & new_cases_adjusted_smooth_high > 5) %>%
+    dplyr::filter(date > "2020-03-15") 
+  
+  min_cases <- plot_2_dat %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(new_cases_smoothed == min(new_cases_smoothed)) %>%
+    dplyr::pull(new_cases_smoothed)
+  
+  max_cases <- plot_2_dat %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(new_cases_adjusted_smooth_mid == max(new_cases_adjusted_smooth_mid)) %>%
+    dplyr::pull(new_cases_adjusted_smooth_mid)
+  
+  p3 <- plot_2_dat %>%
+    ggplot2::ggplot(ggplot2::aes(x = date, y = new_cases_smoothed, color = country)) + 
+    ggplot2::geom_line() + 
+    ggplot2::labs(x = "", y = "") + 
+    ggplot2::scale_y_log10() +
+    ggthemes::theme_few() + 
+    directlabels::geom_dl(ggplot2::aes(label = country), 
+                          method = list(directlabels::dl.combine("last.points"),
+                                        cex = 0.6)) +
+    ggplot2::theme(legend.position="none",
+                   axis.title  = ggplot2::element_text(size = 11),
+                   plot.margin = ggplot2::unit(c(-0.49, 0.5, 0.5, 0.5), "cm")) + 
+    ggplot2::labs(tag = "B",
+                  x = "", y = "New confirmed cases by date of confirmation") + 
+    viridis::scale_color_viridis(discrete = TRUE, begin = 0, end = 0.82) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)) +
+    ggplot2::expand_limits(x = as.Date("2020-06-20"),
+                           y = max_cases)
+  
+  
+  p4 <- plot_2_dat %>%
+    ggplot2::ggplot(ggplot2::aes(x = date, y = new_cases_adjusted_smooth_mid, color = country)) + 
+    ggplot2::geom_line() + 
+    ggplot2::labs(x = "", y = "") + 
+    ggplot2::scale_y_log10() + 
+    ggthemes::theme_few() + 
+    directlabels::geom_dl(ggplot2::aes(label = country), 
+                          method = list(directlabels::dl.combine("last.points"),
+                                        cex = 0.6)) +
+    ggplot2::theme(legend.position="none",
+                   axis.title  = ggplot2::element_text(size = 11),
+                   plot.margin = ggplot2::unit(c(-0.49, 0.5, 0.5, 0.5), "cm")) + 
+    ggplot2::labs(tag = "",
+                  x = "", y = "New adjusted cases by date of confirmation") + 
+    viridis::scale_color_viridis(discrete = TRUE, begin = 0, end = 0.82) + 
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)) + 
+    ggplot2::expand_limits(x = as.Date("2020-06-20"),
+                           y = min_cases)
+  
+  
+  #--- making facet wrap of each individual country - trying out different numbers, ten might be too many
+  
+  top_12_confirmed_case_countries <- union(top_10_adjusted_case_countries, top_10_confirmed_case_countries)
+  
+  plot_3_dat <- all_adjusted_case_data %>%
+    dplyr::group_by(country) %>%
+    dplyr::filter(country %in% top_12_confirmed_case_countries) %>%
+    dplyr::filter(new_cases > 5 & new_cases_adjusted_smooth_mid > 5 & new_cases_adjusted_smooth_low > 5 & new_cases_adjusted_smooth_high > 5)
 
   
-  #--------------- plotting the second data set, the under-reporting estimate over time
-  plot(plotDat$date, plotDat$estimate, 
-       type = "l",
-       las = 1,
-       xlab = "", 
-       ylab = "",
-       #bty = "n",
-       xaxt='n',
-       yaxt='n',
-       #axes = FALSE,
-       main = countryArg,
-       ylim = yLimitsUnderreporting)
-  polygon(x = c(plotDat$date, rev(plotDat$date)),
-          y = c(plotDat$lower, rev(plotDat$upper)),
-          col =  adjustcolor("dodgerblue", alpha.f = 0.30), border = NA)
+  p5 <- plot_3_dat %>%
+    ggplot2::ggplot() + 
+    ggplot2::geom_line(ggplot2::aes(x = date, y = new_cases_smoothed)) + 
+    ggplot2::geom_ribbon(ggplot2::aes(x = date,
+                                      ymin = new_cases_adjusted_smooth_low, 
+                                      ymax = new_cases_adjusted_smooth_high), fill = "dodgerblue", alpha = 0.6) + 
+    ggplot2::labs(x = "", y = "") + 
+    ggplot2::scale_y_log10() +
+    ggthemes::theme_few() + 
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45)) + 
+    ggplot2::theme(legend.position="none",
+                   strip.text  = ggplot2::element_text(size = 13),
+                   axis.title  = ggplot2::element_text(size = 11),
+                   plot.margin = ggplot2::unit(c(0, 0, 0, 0), "cm")) + 
+    ggplot2::labs(tag = "C",
+                  x = "", y = "Cases by date of confirmation") + 
+    viridis::scale_color_viridis(discrete = TRUE, begin = 0, end = 0.82) +
+    ggplot2::facet_wrap(~country, scale = "free", nrow = 5)
   
-  axis(side = 4, ylim = yLimitsUnderreporting, col = "black", las = 1)
   
-  # making the time axis
-  tickPositions = seq(min(plotDat$date), max(plotDat$date), length.out = 4)
-  axis.Date(side = 1, plotDat$date, at = tickPositions, srt = 20)
+  #--- putting it all together into single plot using patchwork
+  
+  library(patchwork)
+  
+  layout <- "
+    AAABBBEEEEE
+    CCCDDDEEEEE
+    "
+  
+  plot_final <- p1 + p2 + p3 + p4 + p5 + plot_layout(design = layout)
+  plot_final
   
 }
 
 #------------------- function for producing the serology figure
 
-figure2Fun <- function()
+figure_3_fun <- function()
 {
   
   # making national plot
@@ -150,9 +327,7 @@ figure2Fun <- function()
     ggplot2::facet_wrap(~country, scales = "free_y") + 
     ggplot2::theme_minimal()
   
-  regional_data <- getAdjustedRegionalCaseAndSerologyData() %>%
-    dplyr::mutate(region = dplyr::case_when(region == "North East and Yorkshire" ~ "North East",
-                                            region != "North East and Yorkshire" ~ region))
+  regional_data <- getAdjustedRegionalCaseAndSerologyData() 
   
   main_plot_regions <- c("Geneva", "London", "New York")
   all_regions <- regional_data %>% 
@@ -177,9 +352,11 @@ figure2Fun <- function()
     ggplot2::scale_y_continuous(labels = scales::percent) +
     ggplot2::facet_wrap(~region, scales = "free_y") + 
     ggplot2::theme_minimal()
-    
+  
   plot_regional_supplementary <- regional_data %>%
     dplyr::filter(region %in% remaining_regions) %>%
+    dplyr::mutate(region = dplyr::case_when(region == "North East and Yorkshire" ~ "North East",
+                                            region != "North East and Yorkshire" ~ region)) %>% 
     dplyr::group_by(region) %>%
     ggplot2::ggplot() +
     ggplot2::geom_ribbon(ggplot2::aes(x = date_infection, ymin = cumulative_incidence_low, ymax = cumulative_incidence_high), alpha = 0.3, colour = NA, fill = "dodgerblue") +
@@ -211,86 +388,23 @@ figure2Fun <- function()
   
 }
 
-#--------------------- function for producing figure 3: true and adjusted daily
-#--------------------- new case curves for top n countries
+#------------------- function to produce map figure
 
-figure3Fun <- function()
+figure_4_fun <- function()
 {
   
-  allAdjustedCaseData <- getAdjustedCaseDataNational()
-  
-  top10Countries <- allAdjustedCaseData %>%
-    dplyr::group_by(country) %>%
-    dplyr::summarise(total_adjusted_cases = sum(new_cases_adjusted_mid)) %>%
-    dplyr::top_n(8) %>%
-    dplyr::pull(country)
-  
-  options(scipen = 999)
-  
-  p1 <- allAdjustedCaseData %>%
-    dplyr::group_by(country) %>%
-    dplyr::filter(country %in% top10Countries) %>%
-    dplyr::filter(new_cases > 5 & new_cases_adjusted_smooth_mid > 5 & new_cases_adjusted_smooth_low > 5 & new_cases_adjusted_smooth_high > 5) %>%
-    dplyr::filter(date > "2020-03-15") %>%
-    ggplot2::ggplot(ggplot2::aes(x = date, y = new_cases_smoothed, color = country)) + 
-    ggplot2::geom_line() + 
-    ggplot2::labs(x = "", y = "") + 
-    ggplot2::scale_y_log10() +
-    ggthemes::theme_few() + 
-    directlabels::geom_dl(ggplot2::aes(label = country), 
-                          method = list(directlabels::dl.combine("last.points"),
-                                        cex = 0.6)) +
-    ggplot2::theme(legend.position="none") + 
-    viridis::scale_color_viridis(discrete = TRUE) +
-    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)) +
-    ggplot2::expand_limits(x = as.Date("2020-06-01"))
-  
-  
-  p2 <- allAdjustedCaseData %>%
-    dplyr::group_by(country) %>%
-    dplyr::filter(country %in% top10Countries) %>%
-    dplyr::filter(new_cases > 5 & new_cases_adjusted_smooth_mid > 5 & new_cases_adjusted_smooth_low > 5 & new_cases_adjusted_smooth_high > 5) %>%
-    dplyr::filter(date > "2020-03-15") %>%
-    ggplot2::ggplot(ggplot2::aes(x = date, y = new_cases_adjusted_smooth_mid, color = country)) + 
-    ggplot2::geom_line() + 
-    ggplot2::labs(x = "", y = "") + 
-    ggplot2::scale_y_log10() + 
-    ggthemes::theme_few() + 
-    directlabels::geom_dl(ggplot2::aes(label = country), 
-                          method = list(directlabels::dl.combine("last.points"),
-                                        cex = 0.6)) +
-    ggplot2::theme(legend.position="none") + 
-    viridis::scale_color_viridis(discrete = TRUE) + 
-    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)) + 
-    ggplot2::expand_limits(x = as.Date("2020-06-01"))
-  
-  
-  figure3 <- ggpubr::ggarrange(p1, p2,
-                               labels = c("A", "B"), 
-                               ncol = 2, nrow = 1)
-  
-  fullFigure <- ggpubr::annotate_figure(figure3, 
-                                        left = ggpubr::text_grob("Smoothed moving average of daily adjusted case counts", rot = 90),
-                                        bottom = ggpubr::text_grob("Time (number of weeks since surpassing 30 cases)"))
-}
-
-
-figure4Fun <- function()
-{
   library(patchwork)
   
-  allAdjustedCaseData <- getAdjustedCaseDataNational()  
+  allAdjustedCaseData <- getAdjustedCaseDataNational() %>% dplyr::group_by(country)
   cumulativeIncidenceEstimatesWorldMap   <- allAdjustedCaseData %>% dplyr::filter(date == max(date))
   cumulativeIncidenceEstimatesEuropeMap1 <- allAdjustedCaseData %>% dplyr::filter(date ==  "2020-03-22")
   cumulativeIncidenceEstimatesEuropeMap2 <- allAdjustedCaseData %>% dplyr::filter(date ==  "2020-04-22")
   cumulativeIncidenceEstimatesEuropeMap3 <- allAdjustedCaseData %>% dplyr::filter(date ==  "2020-05-22")
   
-  
-  # cumulativeIncidenceEstimatesWorldMap <- getIncidenceUpToDateData(dateInput = NULL)
-  # cumulativeIncidenceEstimatesEuropeMap1 <- getIncidenceUpToDateData(dateInput = "2020-03-10")
-  # cumulativeIncidenceEstimatesEuropeMap2 <- getIncidenceUpToDateData(dateInput = "2020-04-10")
-  # cumulativeIncidenceEstimatesEuropeMap3 <- getIncidenceUpToDateData(dateInput = "2020-05-10")
-  # 
+  cumulativeIncidenceEstimatesWorldMap %>% 
+    dplyr::ungroup() %>%
+    dplyr::filter(cumulative_incidence_mid == min(cumulative_incidence_mid))
+
   europeanCountries <- c("Albania", "Andorra", "Austria", "Belarus", "Belgium",
                          "Bosnia and Herzegovina", "Bulgaria", "Croatia", "Cyprus",
                          "Czech Republic", "Denmark", "Estonia", "Finland", "France",
@@ -305,10 +419,10 @@ figure4Fun <- function()
   europeMapData2 <- combineMapAndIncidenceData(cumulativeIncidenceEstimatesEuropeMap2)
   europeMapData3 <- combineMapAndIncidenceData(cumulativeIncidenceEstimatesEuropeMap3)
   
-  worldMapPlot <- mapPlottingFunction(worldMapData, europe = FALSE)
-  europeMapPlot1 <- mapPlottingFunction(europeMapData1, europe = TRUE)
-  europeMapPlot2 <- mapPlottingFunction(europeMapData2, europe = TRUE)
-  europeMapPlot3 <- mapPlottingFunction(europeMapData3, europe = TRUE)
+  worldMapPlot   <- mapPlottingFunction(worldMapData,  europe = FALSE, plot_label = "A")
+  europeMapPlot1 <- mapPlottingFunction(europeMapData1, europe = TRUE, plot_label = "B")
+  europeMapPlot2 <- mapPlottingFunction(europeMapData2, europe = TRUE, plot_label = "C")
+  europeMapPlot3 <- mapPlottingFunction(europeMapData3, europe = TRUE, plot_label = "D")
   
   wholeMapPlot <- worldMapPlot + (europeMapPlot1/europeMapPlot2/europeMapPlot3) +  plot_layout(widths = c(6, 1))
   
@@ -318,78 +432,65 @@ figure4Fun <- function()
 
 #----------- plotting supplementary figure 1
 
-figure1Supp <- function(data, countryArg, tweak1, tweak2)
+figure1Supp <- function(under_reporting_data, country_arg)
 {
   
-  plotDat <- data %>%
-    dplyr::filter(country == countryArg)
   
+  plot_dat_under_reporting <- under_reporting_data %>%
+    dplyr::filter(country == country_arg)
   
-  limitsTesting <- plotDat %>%
-    dplyr::filter(country == countryArg) %>%
-    dplyr::summarise(yMin = min(testsPerCaseMA),
-                     yMax = max(testsPerCaseMA))
+  x_limits_both_dat <- plot_dat_under_reporting %>%
+    dplyr::summarise(x_min = min(date),
+                     x_max = max(date))
   
-  limitsUnderreporting <- plotDat %>%
-    dplyr::filter(country == countryArg) %>%
-    dplyr::summarise(yMin = min(lower),
-                     yMax = max(upper))
+  x_limits_both <- c(x_limits_both_dat$x_min, x_limits_both_dat$x_max)
   
-  yLimitsTesting <- c(limitsTesting$yMin - tweak1, limitsTesting$yMax + tweak2)
-  
-  
-  # plotting the first data set, the testing effort over time
-  plot(plotDat$date, plotDat$testsPerCaseMA,
-       type = "l",
-       lty = 2, 
-       lwd = 1,
-       xlab = "",
-       ylab = "",
-       main = countryArg,
-       #ylim = yLimitsTesting,
-       axes = FALSE)
-  axis(side = 2, ylim = yLimitsTesting, col = "black", las = 1)
-  box()
-  
-  
-  par(new = TRUE)
-  
-  plot(plotDat$date, plotDat$estimate, 
+  #--------------- plotting the first data set, the under-reporting estimate over time
+  plot(plot_dat_under_reporting$date, plot_dat_under_reporting$estimate, 
        type = "l",
        las = 1,
        xlab = "", 
        ylab = "",
        bty = "n",
-       #ylim = limitsDatUnderreporting,
-       axes = FALSE)
-  polygon(x = c(plotDat$date, rev(plotDat$date)),
-          y = c(plotDat$lower, rev(plotDat$upper)),
-          col =  adjustcolor("dodgerblue", alpha.f = 0.10), border = NA)
+       axes = FALSE,
+       xlim = x_limits_both, 
+       ylim = y_limits_under_reporting)
+  polygon(x = c(plot_dat_under_reporting$date, rev(plot_dat_under_reporting$date)),
+          y = c(plot_dat_under_reporting$lower, rev(plot_dat_under_reporting$upper)),
+          col =  adjustcolor("dodgerblue", alpha.f = 0.42), border = NA)
+  axis(side = 4, ylim = y_limits_under_reporting, col = "black", las = 1)
+  box()
   
+  # making the time axis
+  tick_positions = seq(min(plot_dat_under_reporting$date), max(plot_dat_under_reporting$date), length.out = 4)
+  axis.Date(side = 1, plot_dat_under_reporting$date, at = tick_positions, srt = 20)
 }
 
 #----------- plotting correlation between under-reporting estimates and testing efforts
 
-figure2Supp <- function()
+figure_2_supp <- function(plot_data)
 {
+  plot_output <- plot_data %>%
+    dplyr::rename(Country = country) %>%
+    dplyr::mutate(Country = dplyr::case_when(Country == "Bolivia (Plurinational State of)" ~ "Bolivia",
+                                             Country == "Iran (Islamic Republic of)" ~ "Iran",
+                                             Country == "Russian Federation (the)" ~ "Russia",
+                                             Country != "Bolivia" || "Iran" || "Russia" ~ Country )) %>%
+    ggplot2::ggplot() +
+    ggplot2::geom_point(ggplot2::aes(x = estimate, y = testing_effort, color = Country)) + 
+    ggplot2::geom_smooth(ggplot2::aes(x = estimate, y = testing_effort), method = "loess") + 
+    ggplot2::theme(legend.text = ggplot2::element_text(size = 8)) + 
+    viridis::scale_color_viridis(discrete = TRUE, begin = 0, end = 0.82) + 
+    ggplot2::theme_minimal() + 
+    ggplot2::labs(x = "Median under-ascertainment estimate (log scale)",
+                  y = "Testing effort (log scale)") + 
+    ggplot2::scale_y_log10() + 
+    ggplot2::guides(shape = ggplot2::guide_legend(override.aes = list(size = 0.35))) + 
+    ggplot2::guides(color = ggplot2::guide_legend(override.aes = list(size = 0.35))) +
+    ggplot2::theme(legend.title = ggplot2::element_text(size = 7), 
+                   legend.text  = ggplot2::element_text(size = 7))
   
-  plotDat <-  allDataTogether %>%
-    dplyr::filter(country %in% allCountries) %>%
-    dplyr::group_by(country) %>%
-    dplyr::filter(dplyr::n() > 20) %>%
-    dplyr::select(date, country, upper, lower, estimate, testsPerCase) %>%
-    dplyr::na_if(Inf) %>%
-    dplyr::mutate(upper = upper*100, lower = lower*100, estimate = estimate*100)
-  
-  plotOutput <- plotDat %>% 
-    ggplot2::ggplot(ggplot2::aes(x = estimate, y = testsPerCase)) + 
-    ggplot2::geom_point(ggplot2::aes(color = country, group = country)) + 
-    ggplot2::ylim(0, 200) +
-    ggplot2::xlab("Under-reporting estimate for all time points") + 
-    ggplot2::ylab("Testing effort for all time points") + 
-    ggplot2::geom_smooth(method = 'lm', formula = y ~ x)
-  
-  return(plotOutput)
+  return(plot_output)
   
 }
 

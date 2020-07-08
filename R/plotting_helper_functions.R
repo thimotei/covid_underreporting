@@ -20,7 +20,7 @@ theme_map <- function(world = FALSE) {
 }
 
 
-mapPlottingFunction <- function(dataInput, europe = TRUE)
+mapPlottingFunction <- function(dataInput, europe = TRUE, plot_label)
 {
   
   plotOutput <- dataInput %>%
@@ -31,8 +31,11 @@ mapPlottingFunction <- function(dataInput, europe = TRUE)
     viridis::scale_fill_viridis(option = "magma", 
                                 begin = 0.4, 
                                 end = 0.95, 
-                                name = "Percentage of pop that have had COVID-19", 
-                                direction = -1) 
+                                name = "Estimated seroprevalence of SARS-CoV-2", 
+                                direction = -1, 
+                                breaks = c(0, 5, 10, 15, 20),
+                                label = c("0%", "5%", "10%", "15%", "20%")) +
+    ggplot2::labs(tag = plot_label)
   
   if(europe == TRUE)
   {

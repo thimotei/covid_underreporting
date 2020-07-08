@@ -2,7 +2,7 @@ globalPrevalenceEstimates <- function()
 {
   
   asymptomaticEstimateMid <- 0.50
-  asymptomaticEstimateLow <- 0.23
+  asymptomaticEstimateLow <- 0.10
   asymptomaticEstimateHigh <- 0.70
   
   httr::GET("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv", httr::authenticate(":", ":", type="ntlm"), httr::write_disk(tf <- tempfile(fileext = ".csv")))
@@ -72,12 +72,12 @@ globalPrevalenceEstimates <- function()
   
   
   newCaseEstimatesRecent <- allDatRaw %>%
-    dplyr::filter(Sys.Date() - 13 < date) %>% 
+    dplyr::filter(Sys.Date() - 9 < date) %>% 
     dplyr::mutate(country = stringr::str_replace_all(country, "_", " ")) %>%
     dplyr::group_by(country) %>%
     dplyr::summarise(totalNewCases = sum(cases)) %>%
     dplyr::mutate(country = dplyr::case_when(country == "Cote dIvoire" ~ "Côte d'Ivoire",
-                                             country != "Cote dIvoire" ~ country)) 
+                                             country != "Cote dIvoire" ~ country))
   
   
   caseEstimatesTotal <- allDatRaw %>%
@@ -108,13 +108,21 @@ globalPrevalenceEstimates <- function()
     dplyr::mutate(propCurrentlyInfMid = signif(propCurrentlyInfMid, 2),
                   propCurrentlyInfLow = signif(propCurrentlyInfLow, 2),
                   propCurrentlyInfHigh = signif(propCurrentlyInfHigh, 2)) %>%
-    dplyr::select(country, totalCases, totalNewCases, estimate, lower, upper, population, propCurrentlyInfMid, propCurrentlyInfLow, propCurrentlyInfHigh)
+    dplyr::mutate(new_cases_per_hundred_thousand = signif(totalNewCases/(population/100000), 3)) %>%
+    dplyr::select(country, totalCases, totalNewCases, new_cases_per_hundred_thousand, estimate, lower, upper, population, propCurrentlyInfMid, propCurrentlyInfLow, propCurrentlyInfHigh)
  
   return(mostRecentEstimatesTogether)
    
 }
 
-
 tmp <- globalPrevalenceEstimates()
 
-write.csv(tmp, "covid_underreporting/home_office_estimates/currentPrevalenceEstimates_29_05_2020.csv")
+write.csv(tmp, "covid_underreporting/home_office_estimates/currentPrevalenceEstimates_19_06_2020.csv")
+
+
+tmp <- mostRecentEstimatesTogether %>% 
+  dplyr::ungroup() %>%
+  dplyr::select(new_cases_per_hundred_thousand) 
+
+
+write.csv(tmp, "covid_underreporting/home_office_estimates/tmp.csv")

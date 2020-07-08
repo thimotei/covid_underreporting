@@ -5,7 +5,7 @@ UK,London,regional,2,LON,Blood donors,2020-04-06,2020-04-19,2020-04-12,1000,123,
 UK,London,regional,3,LON,Blood donors,2020-04-27,2020-05-03,2020-04-30,1000,175,17.5,NA,Gvt. institution,https://www.gov.uk/government/publications/national-covid-19-surveillance-reports/sero-surveillance-of-covid-19
 UK,Midlands,regional,1,MID,Blood donors,2020-03-30,2020-04-05,2020-04-02,1000,2,1.5,NA,Gvt. institution,https://www.gov.uk/government/publications/national-covid-19-surveillance-reports/sero-surveillance-of-covid-19
 UK,Midlands,regional,2,MID,Blood donors,2020-04-20,2020-04-26,2020-04-23,1000,80,8,NA,Gvt. institution,https://www.gov.uk/government/publications/national-covid-19-surveillance-reports/sero-surveillance-of-covid-19
-UK,North East,regional,1,NOE,Blood donors,2020-04-14,2020-04-19,2020-04-16,1000,42,4.2,NA,Gvt. institution,https://www.gov.uk/government/publications/national-covid-19-surveillance-reports/sero-surveillance-of-covid-19
+UK,North East,regional,1,NEY,Blood donors,2020-04-14,2020-04-19,2020-04-16,1000,42,4.2,NA,Gvt. institution,https://www.gov.uk/government/publications/national-covid-19-surveillance-reports/sero-surveillance-of-covid-19
 UK,North West,regional,1,NOW,Blood donors,2020-05-04,2020-05-10,2020-05-07,1000,120,12,NA,Gvt. institution,https://www.gov.uk/government/publications/national-covid-19-surveillance-reports/sero-surveillance-of-covid-19
 UK,North West,regional,2,NOW,Blood donors,2020-04-14,2020-04-19,2020-04-16,1000,64,6.4,NA,Gvt. institution,https://www.gov.uk/government/publications/national-covid-19-surveillance-reports/sero-surveillance-of-covid-19
 UK,South East,regional,1,SOE,Blood donors,2020-04-20,2020-05-03,2020-04-26,1000,42,4.2,NA,Gvt. institution,https://www.gov.uk/government/publications/national-covid-19-surveillance-reports/sero-surveillance-of-covid-19
@@ -13,4 +13,4 @@ UK,South West,regional,1,SOW,Blood donors,2020-04-20,2020-04-26,2020-04-23,1000,
 Switzerland,Geneva,regional,1,GEN,Public,2020-04-06,2020-04-10,2020-04-08,343,11,3.2,ELISA,Pre-print,https://www.medrxiv.org/content/10.1101/2020.05.02.20088898v1.full.pdf
 Switzerland,Geneva,regional,2,GEN,Public,2020-04-14,2020-04-17,2020-04-15,416,25,6.1,ELISA,Pre-print,https://www.medrxiv.org/content/10.1101/2020.05.02.20088898v1.full.pdf
 Switzerland,Geneva,regional,3,GEN,Public,2020-04-21,2020-04-26,2020-04-23,576,56,9.7,ELISA,Pre-print,https://www.medrxiv.org/content/10.1101/2020.05.02.20088898v1.full.pdf
-USA,New York State,regional,1,NYC,Public,2020-04-19,2020-04-28,2020-04-23,"15,101","1,887",12.5,MIA,Pre-print,https://www.medrxiv.org/content/10.1101/2020.05.25.20113050v1.full.pdf
+USA,New York State,regional,1,NYC,Public,2020-04-19,2020-04-28,2020-04-23,15101,1887,12.5,MIA,Pre-print,https://www.medrxiv.org/content/10.1101/2020.05.25.20113050v1.full.pdf

@@ -23,13 +23,9 @@ getCountryCodes <- function()
 getUnderReportingCaseDeathPopulationAndTestingData <- function()
 {
   
-  adHocTestData <- getAdHocTestingData()
+  owid_data <- readr::read_csv("https://covid.ourworldindata.org/data/owid-covid-data.csv")
   
-  owidData <- readr::read_csv("https://covid.ourworldindata.org/data/owid-covid-data.csv") %>%
-    dplyr::left_join(adHocTestData, by = c("location", "iso_code", "date")) 
-  
-  
-  underReportingPath <- "~/Dropbox/bayesian_underreporting_estimates/current_estimates_extracted_not_age_adjusted/"
+  underReportingPath <- "~/Dropbox/bayesian_underreporting_estimates/current_estimates_age_adjusted"
   files <- dir(path = underReportingPath,
                pattern = "*.rds")
   
@@ -47,12 +43,10 @@ getUnderReportingCaseDeathPopulationAndTestingData <- function()
     dplyr::rename(iso_code = countryCode)
   
   
-  underReportingAndTestingData <- owidData %>% 
+  underReportingAndTestingData <- owid_data %>% 
     dplyr::left_join(underReportingRawData) %>%
     dplyr::mutate(country = countrycode::countrycode(iso_code, "iso3c", destination = 'iso.name.en')) %>%
-    dplyr::select(date, iso_code, country, new_cases, new_deaths, population, estimate, lower, upper, new_tests.x, new_tests.y) %>%
-    dplyr::mutate(new_tests = dplyr::case_when(is.na(new_tests.x) == TRUE ~ new_tests.y,
-                                               is.na(new_tests.y) == TRUE ~ new_tests.x))
+    dplyr::select(date, iso_code, new_cases, estimate, lower, upper, new_tests)
   
   return(underReportingAndTestingData)
 
@@ -63,16 +57,18 @@ getAdjustedCaseDataNational <- function()
 {
   
   asymptomatic_mid <- 0.5
-  asymptomatic_low <- 0.1
+  asymptomatic_low <- 0.2
   asymptomatic_high <- 0.7
   
-  
-  ecdcCaseData <- NCoVUtils::get_ecdc_cases() %>% 
+  ecdc_case_data <- read.csv("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv", na.strings = "", fileEncoding = "UTF-8-BOM") %>%
+    dplyr::mutate(date = lubridate::dmy(dateRep)) %>%
     dplyr::rename(new_cases = cases,
                   new_deaths = deaths, 
-                  iso_code = countryterritoryCode) %>%
+                  iso_code = countryterritoryCode,
+                  country = countriesAndTerritories) %>%
     dplyr::filter(new_cases >= 0)
   
+
   underReportingPath <- "~/Dropbox/bayesian_underreporting_estimates/current_estimates_extracted_not_age_adjusted/"
   files <- dir(path = underReportingPath,
                pattern = "*.rds")
@@ -91,12 +87,12 @@ getAdjustedCaseDataNational <- function()
     dplyr::rename(iso_code = countryCode)
   
   
-  underReportingAndCaseData <- ecdcCaseData %>% 
+  underReportingAndCaseData <- ecdc_case_data %>% 
     dplyr::left_join(underReportingRawData) %>%
     dplyr::group_by(country) %>%
     dplyr::arrange(country, date) %>%
     tidyr::drop_na() %>%
-    dplyr::select(date, iso_code, country, new_cases, new_deaths, population_2018, estimate, lower, upper)
+    dplyr::select(date, iso_code, country, new_cases, new_deaths, population_2019 = popData2019, estimate, lower, upper)
   
   
   dataOut <- underReportingAndCaseData %>%
@@ -108,9 +104,9 @@ getAdjustedCaseDataNational <- function()
                   new_cases_adjusted_smooth_mid  = zoo::rollmean(new_cases_adjusted_mid, k = 7, fill = NA),
                   new_cases_adjusted_smooth_low  = zoo::rollmean(new_cases_adjusted_low, k = 7, fill = NA),
                   new_cases_adjusted_smooth_high = zoo::rollmean(new_cases_adjusted_high, k = 7, fill = NA)) %>%
-    dplyr::mutate(cumulative_incidence_mid  = cumsum(new_cases_adjusted_mid)/(population_2018*(1 - asymptomatic_mid)),
-                  cumulative_incidence_low  = cumsum(new_cases_adjusted_low)/(population_2018*(1 - asymptomatic_low)),
-                  cumulative_incidence_high = cumsum(new_cases_adjusted_high)/(population_2018*(1 - asymptomatic_high))) %>%
+    dplyr::mutate(cumulative_incidence_mid  = cumsum(new_cases_adjusted_mid)/(population_2019*(1 - asymptomatic_mid)),
+                  cumulative_incidence_low  = cumsum(new_cases_adjusted_low)/(population_2019*(1 - asymptomatic_low)),
+                  cumulative_incidence_high = cumsum(new_cases_adjusted_high)/(population_2019*(1 - asymptomatic_high))) %>%
     dplyr::mutate(date_infection  = date - 10) %>%
     dplyr::mutate(cumulative_incidence_mid = dplyr::case_when(cumulative_incidence_mid >= 1 ~ 1,
                                                               cumulative_incidence_mid <= 0 ~ 0,
@@ -145,7 +141,7 @@ getAdjustedCaseDataRegional <- function()
     dplyr::rename(iso_code = country_code)
   
   asymptomatic_mid <- 0.5
-  asymptomatic_low <- 0.1
+  asymptomatic_low <- 0.2
   asymptomatic_high <- 0.7
   
   
@@ -218,7 +214,6 @@ getAdjustedRegionalCaseAndSerologyData <- function()
   return(adjusted_cases_and_serology)
   
 }
-
 #--- regional data functions
 
 #--- merge UK death data from different sources - from Kath Sherratt
@@ -450,7 +445,7 @@ globalPrevalenceEstimates <- function()
 {
   
   asymptomaticEstimateMid <- 0.50
-  asymptomaticEstimateLow <- 0.23
+  asymptomaticEstimateLow <- 0.2
   asymptomaticEstimateHigh <- 0.70
   
   httr::GET("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv", httr::authenticate(":", ":", type="ntlm"), httr::write_disk(tf <- tempfile(fileext = ".csv")))
@@ -466,16 +461,9 @@ globalPrevalenceEstimates <- function()
     unique()
   
   
-  data_path <- "~/Dropbox/bayesian_underreporting_estimates/current_estimates_extracted/"
+  data_path <- "~/Dropbox/bayesian_underreporting_estimates/current_estimates_extracted_not_age_adjusted/"
   files <- dir(path = data_path,
                pattern = "*.rds")
-  
-  dateRange <- allDatRaw %>%
-    dplyr::group_by(country) %>%
-    dplyr::summarise(minDate = min(date),
-                     maxDate = max(date)) %>%
-    dplyr::left_join(countryCodesLookUp) %>% 
-    tidyr::drop_na() 
   
   
   dataTmp <- dplyr::tibble(countryCode = files) %>% 
@@ -486,9 +474,8 @@ globalPrevalenceEstimates <- function()
     tidyr::unnest(cols = c(file_contents)) %>%
     dplyr::mutate(countryCode = stringr::str_remove(countryCode, "result_")) %>% 
     dplyr::mutate(countryCode = stringr::str_remove(countryCode, ".rds")) %>%
-    dplyr::left_join(dateRange) %>%
     dplyr::group_by(countryCode) %>%
-    dplyr::mutate(date = seq(unique(maxDate) - 13 - dplyr::n() + 1, unique(maxDate) - 13, 1)) %>%
+    #dplyr::mutate(date = seq(unique(maxDate) - 13 - dplyr::n() + 1, unique(maxDate) - 13, 1)) %>%
     dplyr::select(date, everything()) %>%
     dplyr::left_join(countryCodesLookUp) %>%
     dplyr::left_join(allDatRaw) %>%
@@ -504,23 +491,25 @@ globalPrevalenceEstimates <- function()
   
   worldPopulationEstimatesClean <- worldPopulationEstimatesRaw %>%
     dplyr::filter(Variant == "Medium" & Time == "2020") %>% 
-    dplyr::select(country = Location, population = PopTotal) %>%
+    dplyr::mutate(iso_code = countrycode::countrycode(LocID, "iso3n", "iso3c")) %>%
+    tidyr::drop_na() %>%
+    dplyr::select(iso_code, population = PopTotal) %>%
     dplyr::mutate(population = population*1000) %>%
-    dplyr::mutate(country = dplyr::case_when(country == "Bolivia (Plurinational State of)" ~ "Bolivia",
-                                             country != "Bolivia (Plurinational State of)" ~ country)) %>%
-    dplyr::mutate(country = dplyr::case_when(country == "Iran (Islamic Republic of)" ~ "Iran",
-                                             country != "Iran (Islamic Republic of)" ~ country)) %>%
-    dplyr::mutate(country = dplyr::case_when(country == "Republic of Moldova" ~ "Moldova",
-                                             country != "Republic of Moldova" ~ country)) %>%
-    dplyr::mutate(country = dplyr::case_when(country == "Russian Federation" ~ "Russia",
-                                             country != "Russian Federation" ~ country)) %>%
-    dplyr::mutate(country = dplyr::case_when(country == "Sint Maarten (Dutch part)" ~ "Sint Maarten",
-                                             country != "Sint Maarten (Dutch part)" ~ country)) %>%
-    dplyr::mutate(country = dplyr::case_when(country == "Republic of Korea" ~ "South Korea",
-                                             country != "Republic of Korea" ~ country)) %>%
-    dplyr::mutate(country = dplyr::case_when(country == "Venezuela (Bolivarian Republic of)" ~ "Venezuela",
-                                             country != "Venezuela (Bolivarian Republic of)" ~ country)) %>%
-    rbind(c("Kosovo", 1810366))
+    # dplyr::mutate(country = dplyr::case_when(country == "Bolivia (Plurinational State of)" ~ "Bolivia",
+    #                                          country != "Bolivia (Plurinational State of)" ~ country)) %>%
+    # dplyr::mutate(country = dplyr::case_when(country == "Iran (Islamic Republic of)" ~ "Iran",
+    #                                          country != "Iran (Islamic Republic of)" ~ country)) %>%
+    # dplyr::mutate(country = dplyr::case_when(country == "Republic of Moldova" ~ "Moldova",
+    #                                          country != "Republic of Moldova" ~ country)) %>%
+    # dplyr::mutate(country = dplyr::case_when(country == "Russian Federation" ~ "Russia",
+    #                                          country != "Russian Federation" ~ country)) %>%
+    # dplyr::mutate(country = dplyr::case_when(country == "Sint Maarten (Dutch part)" ~ "Sint Maarten",
+    #                                          country != "Sint Maarten (Dutch part)" ~ country)) %>%
+    # dplyr::mutate(country = dplyr::case_when(country == "Republic of Korea" ~ "South Korea",
+    #                                          country != "Republic of Korea" ~ country)) %>%
+    # dplyr::mutate(country = dplyr::case_when(country == "Venezuela (Bolivarian Republic of)" ~ "Venezuela",
+    #                                          country != "Venezuela (Bolivarian Republic of)" ~ country)) %>%
+    rbind(c("RKS", 1810366))
   
   allTogether <- dataTmp %>% 
     dplyr::left_join(worldPopulationEstimatesClean) %>%
@@ -530,7 +519,7 @@ globalPrevalenceEstimates <- function()
   
   
   newCaseEstimatesRecent <- allDatRaw %>%
-    dplyr::filter(Sys.Date() - 13 < date) %>% 
+    dplyr::filter(Sys.Date() - 9 < date) %>% 
     dplyr::mutate(country = stringr::str_replace_all(country, "_", " ")) %>%
     dplyr::group_by(country) %>%
     dplyr::summarise(totalNewCases = sum(cases)) %>%
@@ -566,8 +555,133 @@ globalPrevalenceEstimates <- function()
     dplyr::mutate(propCurrentlyInfMid = signif(propCurrentlyInfMid, 2),
                   propCurrentlyInfLow = signif(propCurrentlyInfLow, 2),
                   propCurrentlyInfHigh = signif(propCurrentlyInfHigh, 2)) %>%
-    dplyr::select(country, totalCases, totalNewCases, estimate, lower, upper, population, propCurrentlyInfMid, propCurrentlyInfLow, propCurrentlyInfHigh)
+    dplyr::mutate(new_cases_per_hundred_thousand_pop = totalNewCases/(population/100000)) %>%
+    dplyr::select(country, totalCases, totalNewCases, new_cases_per_hundred_thousand_pop, estimate, lower, upper, population, propCurrentlyInfMid, propCurrentlyInfLow, propCurrentlyInfHigh)
   
   return(mostRecentEstimatesTogether)
+  
+}
+
+#--- putting together testing data from various sources
+getFigure1TestData <- function()
+{
+  
+  ecdc_case_data <- read.csv("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv", na.strings = "", fileEncoding = "UTF-8-BOM") %>%
+    dplyr::mutate(date = lubridate::dmy(dateRep)) %>%
+    dplyr::select(date, new_cases = cases, iso_code = countryterritoryCode)
+  
+  all_case_test_under_reporting_data_no_uk <- getUnderReportingCaseDeathPopulationAndTestingData() %>%
+    dplyr::mutate(country = countrycode::countrycode(iso_code, "iso3c", destination = 'iso.name.en')) %>%
+    dplyr::mutate(country = dplyr::case_when(country == "Korea (the Republic of)" ~ "South Korea",
+                                             country == "United States of America (the)" ~ "USA",
+                                             country != "Korea (the Republic of)" | country != "United States of America (the)" ~ country)) %>% 
+    dplyr::mutate(testing_effort = zoo::rollmean(new_tests/new_cases, k = 7, fill = NA)) %>%
+    dplyr::mutate(testing_effort = dplyr::na_if(testing_effort, "Inf")) %>%
+    dplyr::select(date, iso_code, country, estimate, lower, upper, new_cases, new_tests, testing_effort)
+  
+  us_uk_test_data <-  getAdHocTestingData()
+  
+  #--- sorting out UK test data
+  
+  uk_case_test_data <- us_uk_test_data %>% 
+    dplyr::rename(country = location) %>%
+    dplyr::left_join(ecdc_case_data, by = c("date", "iso_code"))
+  
+  uk_test_under_reporting_data <- all_case_test_under_reporting_data_no_uk %>% 
+    dplyr::filter(iso_code == "GBR") %>%
+    dplyr::select(-new_tests) %>%
+    dplyr::left_join(uk_case_test_data) %>%
+    dplyr::mutate(new_tests = dplyr::case_when(date == "2020-05-04" ~ 59031,
+                                               date != "2020-05-04" ~ new_tests)) %>%
+    dplyr::select(date, iso_code, country, estimate, lower, upper, new_tests, new_cases)
+  
+  #--- putting it all together
+  
+  figure_1_data <- all_case_test_under_reporting_data_no_uk %>%
+    dplyr::filter(iso_code != "GBR") %>%
+    dplyr::full_join(uk_test_under_reporting_data) %>%
+    dplyr::mutate(new_cases = dplyr::case_when(new_cases < 0 ~ 0,
+                                               new_cases >= 0 ~ new_cases)) %>%
+    dplyr::mutate(testing_effort = zoo::rollmean(new_tests/new_cases, k = 7, fill = NA)) %>%
+    dplyr::mutate(testing_effort = dplyr::na_if(testing_effort, "Inf")) 
+  
+  figure_1_testing_data <- figure_1_data %>%
+    dplyr::select(date, iso_code, country, testing_effort) %>%
+    tidyr::drop_na()
+  
+  return(figure_1_testing_data)
+  
+}
+
+
+getFigure1UnderReportingData <- function()
+{
+  
+  ecdc_case_data <- read.csv("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv", na.strings = "", fileEncoding = "UTF-8-BOM") %>%
+    dplyr::mutate(date = lubridate::dmy(dateRep)) %>%
+    dplyr::select(date, new_cases = cases, iso_code =countryterritoryCode)
+  
+  all_case_test_under_reporting_data_no_uk <- getUnderReportingCaseDeathPopulationAndTestingData() %>%
+    dplyr::mutate(country = countrycode::countrycode(iso_code, "iso3c", destination = 'iso.name.en')) %>%
+    dplyr::mutate(country = dplyr::case_when(country == "Korea (the Republic of)" ~ "South Korea",
+                                             country == "United States of America (the)" ~ "USA",
+                                             country != "Korea (the Republic of)" | country != "United States of America (the)" ~ country)) %>% 
+    dplyr::mutate(testing_effort = zoo::rollmean(new_tests/new_cases, k = 7, fill = NA)) %>%
+    dplyr::mutate(testing_effort = dplyr::na_if(testing_effort, "Inf")) %>%
+    dplyr::select(date, iso_code, country, estimate, lower, upper, new_cases, new_tests, testing_effort)
+  
+  us_uk_test_data <-  getAdHocTestingData()
+  
+  #--- sorting out UK test data
+  
+  uk_case_test_data <- us_uk_test_data %>% 
+    dplyr::rename(country = location) %>%
+    dplyr::left_join(ecdc_case_data, by = c("date", "iso_code"))
+  
+  uk_test_under_reporting_data <- all_case_test_under_reporting_data_no_uk %>% 
+    dplyr::filter(iso_code == "GBR") %>%
+    dplyr::select(-new_tests) %>%
+    dplyr::left_join(uk_case_test_data) %>%
+    dplyr::mutate(new_tests = dplyr::case_when(date == "2020-05-04" ~ 59031,
+                                               date != "2020-05-04" ~ new_tests)) %>%
+    dplyr::select(date, iso_code, country, estimate, lower, upper, new_tests, new_cases)
+  
+  #--- putting it all together
+  
+  figure_1_data <- all_case_test_under_reporting_data_no_uk %>%
+    dplyr::filter(iso_code != "GBR") %>%
+    dplyr::full_join(uk_test_under_reporting_data) %>%
+    dplyr::mutate(new_cases = dplyr::case_when(new_cases < 0 ~ 0,
+                                               new_cases >= 0 ~ new_cases)) %>%
+    dplyr::mutate(testing_effort = zoo::rollmean(new_tests/new_cases, k = 7, fill = NA)) %>%
+    dplyr::mutate(testing_effort = dplyr::na_if(testing_effort, "Inf")) 
+  
+  
+  figure_1_under_reporting_data <- figure_1_data %>%
+    dplyr::select(date, iso_code, country, estimate, lower, upper) %>%
+    tidyr::drop_na()
+  
+}
+
+
+all_underascertainment_data <- function()
+{
+  
+  underReportingPath <- "~/Dropbox/bayesian_underreporting_estimates/current_estimates_extracted_not_age_adjusted/"
+  files <- dir(path = underReportingPath,
+               pattern = "*.rds")
+  
+  underReportingRawData <- dplyr::tibble(countryCode = files) %>% 
+    dplyr::mutate(file_contents = purrr::map(countryCode, 
+                                             ~ readRDS(file.path(underReportingPath, .)))) %>% 
+    tidyr::unnest(cols = c(file_contents)) %>%
+    dplyr::mutate(countryCode = stringr::str_remove(countryCode, "result_")) %>% 
+    dplyr::mutate(countryCode = stringr::str_remove(countryCode, ".rds")) %>%
+    dplyr::group_by(countryCode) %>%
+    dplyr::select(date, everything()) %>%
+    dplyr::select(date, countryCode, everything()) %>%
+    dplyr::group_by(countryCode) %>%
+    dplyr::ungroup() %>%
+    dplyr::rename(iso_code = countryCode)
   
 }
