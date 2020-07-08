@@ -3,10 +3,10 @@ sing reported data on COVID-19 cases and fatalities globally, we estimated the p
 
 ## Contents in the repository
 The repo contains all the functions and scripts required to reproduce the results of (this paper)[https://cmmid.github.io/topics/covid19/Under-Reporting.html]. Specifically, the functions and scripts in this repo are for:
-*downloading the required data from the ECDC [here](https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide)
-*importing the estimates from the bayesian inference model which forms the basis for the paper, the code and estimates for which can be found [here](https://github.com/thimotei/CFR_calculation)
-*combining the data and estimates to adjust the case curves
-*producing all figures in the manuscript 
+* downloading the required data from the ECDC [here](https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide)
+* importing the estimates from the bayesian inference model which forms the basis for the paper, the code and estimates for which can be found [here](https://github.com/thimotei/CFR_calculation)
+* combining the data and estimates to adjust the case curves
+* producing all figures in the manuscript 
 
 To download the code, clone this repository using the command
 
