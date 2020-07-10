@@ -16,6 +16,14 @@ git clone https://github.com/thimotei/covid_underreporting
 
 To reproduce all of the figures in the manuscript, run the script 
 ```r
-scripts/main_script.R
+scripts/plotting_main_figures.R
 ```
+
 in which all of the data required for the figures is pulled using the `R/data_helper_functions.R` and the plots are made using both the `R/plotting_functions.R` and `R/plotting_helper_functions.R`.
+
+Finally, to reproduce all of the results quoted in the main text of the manuscript, run the script 
+```r
+scripts/miscellaneous_results.R
+```
+
+
