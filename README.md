@@ -1,5 +1,5 @@
 # Reconstructing the global dynamics of unreported COVID-19 cases and infections
-sing reported data on COVID-19 cases and fatalities globally, we estimated the proportion of symptomatic cases that were reported in 210 countries and territories. We then use these estimates to attempt to reconstruct the pandemic.
+Using reported data on COVID-19 cases and fatalities globally, we estimated the proportion of symptomatic cases that were reported in 210 countries and territories. We then use these estimates to attempt to reconstruct the pandemic.
 
 ## Contents in the repository
 The repo contains all the functions and scripts required to reproduce the results of (this paper)[https://cmmid.github.io/topics/covid19/Under-Reporting.html]. Specifically, the functions and scripts in this repo are for:
