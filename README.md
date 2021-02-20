@@ -1,7 +1,7 @@
 # Reconstructing the global dynamics of unreported COVID-19 cases and infections
 Using reported data on COVID-19 cases and fatalities globally, we estimated the proportion of symptomatic cases that were reported in 210 countries and territories. We then use these estimates to attempt to reconstruct the pandemic.
 
-## Contents in the repository
+## Contents of the repository
 The repo contains all the functions and scripts required to reproduce the results of [this paper](https://cmmid.github.io/topics/covid19/Under-Reporting.html). Specifically, the functions and scripts in this repo are for:
 * downloading the required data from the ECDC [here](https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide)
 * importing the estimates from the bayesian inference model which forms the basis for the paper, the code and estimates for which can be found [here](https://github.com/thimotei/CFR_calculation)
